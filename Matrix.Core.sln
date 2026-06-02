@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Matrix.Domain", "Matrix.Dom
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Matrix.Infrastructure", "Matrix.Infrastructure\Matrix.Infrastructure.csproj", "{F4DEF5CE-A510-4A8F-96E1-02F1E8541824}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Matrix.UnitTests", "Matrix.UnitTests\Matrix.UnitTests.csproj", "{03179069-957C-4B99-B2F1-178D0B6E9F3C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{F4DEF5CE-A510-4A8F-96E1-02F1E8541824}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F4DEF5CE-A510-4A8F-96E1-02F1E8541824}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F4DEF5CE-A510-4A8F-96E1-02F1E8541824}.Release|Any CPU.Build.0 = Release|Any CPU
+		{03179069-957C-4B99-B2F1-178D0B6E9F3C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{03179069-957C-4B99-B2F1-178D0B6E9F3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{03179069-957C-4B99-B2F1-178D0B6E9F3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{03179069-957C-4B99-B2F1-178D0B6E9F3C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
