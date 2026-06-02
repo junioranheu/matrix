@@ -3,11 +3,9 @@ using Matrix.Domain.Enums;
 
 namespace Matrix.Domain.Factories;
 
-public sealed class WorldFactory(HumanFactory humanFactory)
+public sealed class WorldFactory()
 {
-    private readonly HumanFactory _humanFactory = humanFactory;
-
-    public World Create()
+    public static World Create()
     {
         World world = new(name: "Matrix");
 

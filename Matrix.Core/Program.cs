@@ -1,5 +1,8 @@
-﻿var humanFactory = new HumanFactory();
+﻿using Matrix.Domain.Entities;
+using Matrix.Domain.Factories;
 
-var worldFactory = new WorldFactory(humanFactory);
+Console.Title = "Bem-vindo à Matrix.";
 
-var world = worldFactory.Create();
+World _ = WorldFactory.Create();
+
+Console.ReadKey();
