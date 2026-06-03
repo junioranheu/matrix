@@ -14,7 +14,12 @@ await settings.ConfigureAsync();
 World world = WorldFactory.Create(initialYear: DateOnly.MinValue);
 
 // Simulação;
-SimulationFactory.Run(settings, world);
+for (int year = 1; year <= settings.SimulationYears; year++)
+{
+    SimulationFactory.Run(world);
+
+    WorldYearConsoleReport.Print(settings, world);
+}
 
 // Output final;
 WorldConsoleReport.Print(world);

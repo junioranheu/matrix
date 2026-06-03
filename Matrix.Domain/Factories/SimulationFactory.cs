@@ -24,43 +24,28 @@ public sealed class SimulationFactory
     private const int NATURAL_DEATH_AGE_90 = 77;
     private const int NATURAL_DEATH_AGE_100 = 97;
 
-    public static void Run(InitialSettings settings, World world)
+    public static void Run(World world)
     {
-        ArgumentNullException.ThrowIfNull(settings);
-        ArgumentNullException.ThrowIfNull(world);
+        StartYear(world);
 
-        for (int year = 1; year <= settings.SimulationYears; year++)
-        {
-            StartYear(world, settings);
+        ProcessPopulation(world);
 
-            ProcessPopulation(world, settings);
-
-            EndYear(world);
-        }
+        EndYear(world);
     }
 
     #region methods
     /// <summary>
     /// Executa as ações de preparação do ano atual.
     /// </summary>
-    private static void StartYear(World world, InitialSettings settings)
+    private static void StartYear(World world)
     {
         ConsoleConfigurationHelpers.SetTitle(worldName: world.Name, currentyYear: world.CurrentYear);
-
-        if (!settings.ShowEvents)
-        {
-            return;
-        }
-
-        AnsiConsole.WriteLine();
-        AnsiConsole.Write(new Rule($"[cyan]Ano {world.CurrentDateString}[/]").RuleStyle("grey"));
-        AnsiConsole.WriteLine();
     }
 
     /// <summary>
     /// Processa todos os habitantes vivos do mundo.
     /// </summary>
-    private static void ProcessPopulation(World world, InitialSettings settings)
+    private static void ProcessPopulation(World world)
     {
         List<Human> humans = [.. world.Humans.Where(x => x.Life.IsAlive)];
 
@@ -85,17 +70,6 @@ public sealed class SimulationFactory
                 deaths++;
             }
         }
-
-        if (!settings.ShowEvents)
-        {
-            return;
-        }
-
-        int alivePopulation = world.Humans.Count(x => x.Life.IsAlive);
-
-        AnsiConsole.MarkupLine($"[white]População:[/] {alivePopulation}");
-        AnsiConsole.MarkupLine($"[green]Nascimentos:[/] {births}");
-        AnsiConsole.MarkupLine($"[red]Mortes:[/] {deaths}");
     }
 
     /// <summary>
