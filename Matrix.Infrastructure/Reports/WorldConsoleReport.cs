@@ -33,7 +33,10 @@ public static class WorldConsoleReport
 
     private static void PrintHumans(World world)
     {
-        Table table = new();
+        Table table = new()
+        {
+            Expand = true
+        };
 
         table.Border(TableBorder.Rounded);
 
@@ -42,12 +45,6 @@ public static class WorldConsoleReport
         table.AddColumn("Idade");
         table.AddColumn("Status");
         table.AddColumn("Saúde");
-        table.AddColumn("Imun.");
-        table.AddColumn("Fertil.");
-        table.AddColumn("Fome");
-        table.AddColumn("Felic.");
-        table.AddColumn("Stress");
-        table.AddColumn("Energia");
         table.AddColumn("País");
         table.AddColumn("Filhos");
         table.AddColumn("Doenças");
@@ -60,12 +57,6 @@ public static class WorldConsoleReport
                 human.Life.Age.ToString(),
                 human.Life.IsAlive ? "[green]Vivo[/]" : "[red]Morto[/]",
                 human.Health.Health.ToString(),
-                human.Health.Immunity.ToString(),
-                human.Health.Fertility.ToString(),
-                human.Needs.Hunger.ToString(),
-                human.Needs.Happiness.ToString(),
-                human.Needs.Stress.ToString(),
-                human.Needs.Energy.ToString(),
                 human.Location.BirthCountry.ToString(),
                 human.Family.ChildrenIds.Count.ToString(),
                 human.Health.Diseases.Count.ToString()

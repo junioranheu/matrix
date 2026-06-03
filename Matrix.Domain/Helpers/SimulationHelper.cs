@@ -23,7 +23,7 @@ public static class SimulationHelper
     /// <returns>
     /// Uma tupla contendo o nome e sobrenome gerados aleatoriamente.
     /// </returns>
-    public static (string FirstName, string LastName) GenerateRandomName(CountryEnum country, GenderEnum gender)
+    public static (string firstName, string lastName) GenerateRandomName(CountryEnum country, GenderEnum gender)
     {
         HumanNameNationality nationality = HumanNameNationalityMapper.MapFrom(country);
 
