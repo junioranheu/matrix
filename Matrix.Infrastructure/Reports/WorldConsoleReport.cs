@@ -76,14 +76,14 @@ public static class WorldConsoleReport
     private static void AddHumanRow(Table table, Human human)
     {
         table.AddRow(
-            human.Identity.BirthDate.ToString(),
+            $"{human.Identity.BirthDate:yyyy}",
             human.Identity.FullName,
             human.Identity.Gender.GetDescription(),
             human.Life.Age.ToString(),
             human.Life.IsAlive ? "[cyan]Vivo[/]" : $"[red]Morto em {human.Life.DateOfDeathString}[/]",
             human.Life.CauseOfDeath is null ? "—" : human.Life.CauseOfDeath.GetDescription(),
             human.Location.BirthCountryDescription,
-            human.Location.CurrentCountry.GetDescription(),
+            human.Location.CurrentCountryDescription,
             human.Family.ChildrenIds.Count.ToString(),
             $"{human.Life.LifeEvents.Count} eventos"
         );

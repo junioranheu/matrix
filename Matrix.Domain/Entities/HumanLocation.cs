@@ -20,6 +20,11 @@ public sealed class HumanLocation(CountryEnum birthCountry)
     /// Descrição do país de nascimento;
     /// </summary>
     public string BirthCountryDescription => BirthCountry.GetDescription();
+
+    /// <summary>
+    /// Descrição do país atual;
+    /// </summary>
+    public string CurrentCountryDescription => CurrentCountry.GetDescription();
     #endregion
 
     #region methods
