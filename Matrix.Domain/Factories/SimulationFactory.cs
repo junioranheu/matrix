@@ -174,10 +174,13 @@ public sealed class SimulationFactory
     private static Human? GetReproductionPartner(World world, Human human)
     {
         List<Human> candidates = [.. world.Humans.Where(x =>
-            x.Life.IsAlive &&
-            x.Identity.Gender != human.Identity.Gender &&
-            x.Life.Age >= MIN_REPRODUCTION_AGE &&
-            x.Life.Age <= MAX_REPRODUCTION_AGE)];
+            x.Life.IsAlive == true &&  // Precisa estar vivo;
+            x.Identity.Gender != human.Identity.Gender && // Precisa ser do sexo oposto;
+            x.Life.Age >= MIN_REPRODUCTION_AGE && // Precisa ter idade mínima para reprodução;
+            x.Life.Age <= MAX_REPRODUCTION_AGE && // Precisa estar abaixo da idade máxima para reprodução;
+            !AreParentAndChild(human, x) && // Não pode ser pais/filhos;
+            !AreSiblings(human, x) // Não pode ser irmão ou irmã;
+        )];
 
         if (candidates.Count == 0)
         {
@@ -187,6 +190,28 @@ public sealed class SimulationFactory
         int index = RandomHelpers.RandomBetween(0, candidates.Count - 1);
 
         return candidates[index];
+    }
+
+    /// <summary>
+    /// Verifica se são pais/filhos;
+    /// </summary>
+    private static bool AreParentAndChild(Human a, Human b)
+    {
+        return a.Id == b.Family.FatherId ||
+               a.Id == b.Family.MotherId ||
+               b.Id == a.Family.FatherId ||
+               b.Id == a.Family.MotherId;
+    }
+
+    /// <summary>
+    /// Verifica se são irmãos;
+    /// </summary>
+    private static bool AreSiblings(Human a, Human b)
+    {
+        return a.Family.FatherId != null &&
+               a.Family.FatherId == b.Family.FatherId &&
+               a.Family.MotherId != null &&
+               a.Family.MotherId == b.Family.MotherId;
     }
 
     /// <summary>
@@ -204,6 +229,10 @@ public sealed class SimulationFactory
             mother,
             firstName: firstName,
             currentDate);
+
+        father.Family.AddChild(life: father.Life, needs: father.Needs, childId: child.Id);
+
+        mother.Family.AddChild(life: mother.Life, needs: mother.Needs, childId: child.Id);
 
         return child;
     }

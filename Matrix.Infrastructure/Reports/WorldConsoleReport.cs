@@ -44,10 +44,10 @@ public static class WorldConsoleReport
     {
         Table table = new()
         {
-            Expand = true
+            Expand = true,
+            ShowRowSeparators = true,
+            Border = TableBorder.Rounded
         };
-
-        table.Border(TableBorder.Rounded);
 
         table.AddColumn("Data de nasc.");
         table.AddColumn("Nome");
