@@ -51,6 +51,7 @@ public static class WorldConsoleReport
 
         table.AddColumn("Data de nasc.");
         table.AddColumn("Nome");
+        table.AddColumn("Gênero");
         table.AddColumn("Idade");
         table.AddColumn("Status");
         table.AddColumn("Causa da morte");
@@ -64,6 +65,7 @@ public static class WorldConsoleReport
             table.AddRow(
                 human.Identity.BirthDate.ToString(),
                 human.Identity.FullName,
+                human.Identity.Gender.GetDescription(),
                 human.Life.Age.ToString(),
                 human.Life.IsAlive ? "[cyan]Vivo[/]" : $"[red]Morto em {human.Life.DateOfDeathString}[/]",
                 human.Life.CauseOfDeath is null ? "—" : human.Life.CauseOfDeath.GetDescription(),

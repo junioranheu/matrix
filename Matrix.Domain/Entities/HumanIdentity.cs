@@ -1,12 +1,19 @@
-﻿namespace Matrix.Domain.Entities;
+﻿using Matrix.Domain.Enums;
 
-public sealed class HumanIdentity(string firstName, string lastName, DateOnly birthDate)
+namespace Matrix.Domain.Entities;
+
+public sealed class HumanIdentity(GenderEnum gender, string firstName, string lastName, DateOnly birthDate)
 {
     #region props
     /// <summary>
     /// Identificador único do humano.
     /// </summary>
     public Guid Id { get; } = Guid.NewGuid();
+
+    /// <summary>
+    /// Identificador único do humano.
+    /// </summary>
+    public GenderEnum Gender { get; private set; } = gender;
 
     /// <summary>
     /// Primeiro nome.

@@ -14,6 +14,7 @@ public sealed class Human(
         age: life.Age);
 
     public HumanIdentity Identity { get; private set; } = new(
+        gender: identity.Gender,
         firstName: identity.FirstName,
         lastName: identity.LastName,
         birthDate: identity.BirthDate);
