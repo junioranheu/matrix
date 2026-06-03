@@ -2,7 +2,6 @@
 using Matrix.Domain.Enums;
 using Matrix.Domain.Helpers;
 using Matrix.Shared.Helpers;
-using Spectre.Console;
 
 namespace Matrix.Domain.Factories;
 
@@ -12,6 +11,7 @@ namespace Matrix.Domain.Factories;
 /// </summary>
 public sealed class SimulationFactory
 {
+    #region consts
     private const int MIN_REPRODUCTION_AGE = 15;
     private const int MAX_REPRODUCTION_AGE = 50;
 
@@ -23,14 +23,20 @@ public sealed class SimulationFactory
     private const int NATURAL_DEATH_AGE_80 = 30;
     private const int NATURAL_DEATH_AGE_90 = 77;
     private const int NATURAL_DEATH_AGE_100 = 97;
+    #endregion
 
-    public static void Run(World world)
+    public static void Run(InitialSettings settings, World world, Action<InitialSettings, World> yearReport)
     {
-        StartYear(world);
+        for (int year = 0; year < settings.SimulationYears; year++)
+        {
+            StartYear(world);
 
-        ProcessPopulation(world);
+            ProcessPopulation(world);
 
-        EndYear(world);
+            yearReport.Invoke(settings, world);
+
+            EndYear(world);
+        }
     }
 
     #region methods
