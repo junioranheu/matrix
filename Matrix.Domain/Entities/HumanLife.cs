@@ -1,4 +1,5 @@
 ﻿using Matrix.Domain.Enums;
+using Matrix.Shared.Extensions;
 using Matrix.Shared.Helpers;
 
 namespace Matrix.Domain.Entities;
@@ -98,7 +99,7 @@ public sealed class HumanLife(int age = 0)
         DateOfDeath = dateOfDeath;
         CauseOfDeath = cause;
 
-        AddLifeEvent($"Faleceu por {cause}.");
+        AddLifeEvent($"Faleceu por {cause.GetDescription()}.");
     }
 
     /// <summary>

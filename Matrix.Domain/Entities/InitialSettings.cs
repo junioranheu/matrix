@@ -12,9 +12,9 @@ public sealed class InitialSettings
     public int SimulationYears { get; set; } = DateTime.UtcNow.Year;
 
     /// <summary>
-    /// Civilização inicial. Quantidade de humanos.
+    /// Civilização inicial. Quantidade de casais.
     /// </summary>
-    public int StartingPopulation { get; set; } = 4;
+    public int StartingCouples { get; set; } = 2;
 
     /// <summary>
     /// Exibe os eventos durante a simulação.
@@ -37,7 +37,7 @@ public sealed class InitialSettings
             AnsiConsole.Write(new Rule("[cyan]Modo debug ativado[/]").RuleStyle("grey"));
 
             SimulationYears = DateTime.UtcNow.Year;
-            StartingPopulation = 4;
+            StartingCouples = 2;
             ShowEvents = true;
         }
         else
@@ -54,22 +54,17 @@ public sealed class InitialSettings
                     ValidationErrorMessage($"[red]A quantidade de anos da simulação deve estar entre {minSimulationYears} e {maxSimulationYears}.[/]").
                     Validate(x => x >= minSimulationYears && x <= maxSimulationYears));
 
-            const int minStartingPopulation = 4;
-            const int maxStartingPopulation = 100;
+            const int minCouples = 1;
+            const int maxCouples = 100;
 
-            StartingPopulation = AnsiConsole.Prompt(
-                new TextPrompt<int>("Quantos humanos deseja iniciar na civilização?").
+            StartingCouples = AnsiConsole.Prompt(
+                new TextPrompt<int>("Quantos casais deseja iniciar na civilização?").
                     PromptStyle("cyan").
                     Validate(x =>
                     {
-                        if (x < minStartingPopulation || x > maxStartingPopulation)
+                        if (x < minCouples || x > maxCouples)
                         {
-                            return ValidationResult.Error($"[red]A população inicial deve estar entre {minStartingPopulation} e {maxStartingPopulation}.[/]");
-                        }
-
-                        if (x % 2 != 0)
-                        {
-                            return ValidationResult.Error("[red]A população inicial deve ser um número par.[/]");
+                            return ValidationResult.Error($"[red]A quantidade inicial de casais deve estar entre {minCouples} e {maxCouples}.[/]");
                         }
 
                         return ValidationResult.Success();
@@ -91,7 +86,7 @@ public sealed class InitialSettings
         table.AddColumn("[cyan]Valor[/]");
 
         table.AddRow("Anos simulados", SimulationYears.ToString());
-        table.AddRow("População inicial", StartingPopulation.ToString());
+        table.AddRow("População inicial", StartingCouples.ToString());
         table.AddRow("Exibir eventos", ShowEvents ? "Sim" : "Não");
 
         AnsiConsole.Write(table);

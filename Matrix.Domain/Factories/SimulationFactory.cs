@@ -3,6 +3,8 @@ using Matrix.Domain.Enums;
 using Matrix.Domain.Helpers;
 using Matrix.Shared.Extensions;
 using Matrix.Shared.Helpers;
+using System.Diagnostics.Metrics;
+using System.Security.Cryptography;
 
 namespace Matrix.Domain.Factories;
 
@@ -348,13 +350,15 @@ public sealed class SimulationFactory
     {
         GenderEnum gender = RandomHelpers.RandomBetween(0, 1) == 0 ? GenderEnum.Male : GenderEnum.Female;
 
-        (string firstName, string _) = SimulationHelper.GenerateRandomName(mother.Location.BirthCountry, gender);
+        (string firstName, string _) = SimulationHelper.GenerateRandomName(father.Location.BirthCountry, gender);
 
         Human child = HumanFactory.CreateChild(gender, father, mother, firstName, currentDate);
 
         father.Family.AddChild(life: father.Life, needs: father.Needs, childId: child.Id);
 
         mother.Family.AddChild(life: mother.Life, needs: mother.Needs, childId: child.Id);
+
+        child.Life.AddLifeEvent($"Nasceu em {currentDate:yyyy}, {mother.Location.CurrentCountry.GetDescription()}.");
 
         return child;
     }

@@ -67,7 +67,7 @@ public sealed class HumanFactory
                 motherId: mother.Id),
 
             location: new HumanLocation(
-                mother.Location.BirthCountry),
+                mother.Location.CurrentCountry),
 
             health: new HumanHealth(
                 health: SimulationHelper.InheritFromParentsValues(

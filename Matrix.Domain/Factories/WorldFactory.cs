@@ -3,6 +3,7 @@ using Matrix.Domain.Enums;
 using Matrix.Domain.Helpers;
 using Matrix.Shared.Extensions;
 using Matrix.Shared.Helpers;
+using System;
 
 namespace Matrix.Domain.Factories;
 
@@ -20,14 +21,14 @@ public sealed class WorldFactory()
         // Cria o mundo;
         World world = new(name: SimulationHelper.GeneratePlanetName(), initialYear);
 
-        // Obtém aleatoriamente um país de origem;
-        CountryEnum startingCountry = EnumExtensions.GetRandom<CountryEnum>();
-
-        for (int i = 0; i < settings.StartingPopulation; i++)
+        for (int i = 0; i < settings.StartingCouples; i++)
         {
-            Human man = CreateMan(world, gender: GenderEnum.Male, startingCountry, currentYear: initialYear);
+            // Obtém aleatoriamente um país de origem;
+            CountryEnum startingCountry = EnumExtensions.GetRandom<CountryEnum>();
 
-            Human woman = CreateWoman(world, gender: GenderEnum.Female, startingCountry, currentYear: initialYear, man);
+            Human man = CreateMan(world, gender: GenderEnum.Male, startingCountry, currentDate: initialYear);
+
+            Human woman = CreateWoman(world, gender: GenderEnum.Female, startingCountry, currentDate: initialYear, man);
 
             Marry(man, woman);
         }
@@ -49,10 +50,10 @@ public sealed class WorldFactory()
     /// <param name="startingCountry">
     /// País utilizado para geração do nome e definição da nacionalidade inicial.
     /// </param>
-    /// <param name="currentYear">
+    /// <param name="currentDate">
     /// Data atual da simulação utilizada para calcular a data de nascimento.
     /// </param>
-    private static Human CreateMan(World world, GenderEnum gender, CountryEnum startingCountry, DateOnly currentYear)
+    private static Human CreateMan(World world, GenderEnum gender, CountryEnum startingCountry, DateOnly currentDate)
     {
         (string manFirstName, string manLastName) = SimulationHelper.GenerateRandomName(country: startingCountry, gender);
 
@@ -64,9 +65,9 @@ public sealed class WorldFactory()
             lastName: manLastName,
             country: startingCountry,
             age: manAge,
-            currentYear);
+            currentDate);
 
-        world.AddHuman(man);
+        world.AddHuman(human: man, currentDate, country: startingCountry, isInitialSpawn: true, age: manAge);
 
         return man;
     }
@@ -84,13 +85,13 @@ public sealed class WorldFactory()
     /// <param name="startingCountry">
     /// País utilizado para geração do nome e definição da nacionalidade inicial.
     /// </param>
-    /// <param name="currentYear">
+    /// <param name="currentDate">
     /// Data atual da simulação utilizada para calcular a data de nascimento.
     /// </param>
     /// <param name="man">
     /// Homem, que deverá ajudar a construir a mulher com sua costela -- não, pera. Apenas o sobrenome e a idade mesmo.
     /// </param>
-    private static Human CreateWoman(World world, GenderEnum gender, CountryEnum startingCountry, DateOnly currentYear, Human man)
+    private static Human CreateWoman(World world, GenderEnum gender, CountryEnum startingCountry, DateOnly currentDate, Human man)
     {
         (string womanFirstName, string _) = SimulationHelper.GenerateRandomName(country: startingCountry, gender);
 
@@ -100,9 +101,9 @@ public sealed class WorldFactory()
             lastName: man.Identity.LastName,
             country: startingCountry,
             age: man.Life.Age,
-            currentYear);
+            currentDate);
 
-        world.AddHuman(woman);
+        world.AddHuman(human: woman, currentDate, country: startingCountry, isInitialSpawn: true, age: man.Life.Age);
 
         return woman;
     }

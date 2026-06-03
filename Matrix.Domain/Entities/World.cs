@@ -1,4 +1,7 @@
-﻿namespace Matrix.Domain.Entities;
+﻿using Matrix.Domain.Enums;
+using Matrix.Shared.Extensions;
+
+namespace Matrix.Domain.Entities;
 
 public sealed class World(string name, DateOnly initialYear)
 {
@@ -41,9 +44,18 @@ public sealed class World(string name, DateOnly initialYear)
         CurrentYear++;
     }
 
-    public void AddHuman(Human human)
+    public void AddHuman(Human human, DateOnly currentDate, CountryEnum country, bool isInitialSpawn, int age)
     {
         Humans.Add(human);
+
+        if (isInitialSpawn)
+        {
+            human.Life.AddLifeEvent($"Magicamente spawnou no mundo com {age} anos, no ano de {currentDate:yyyy}, {country.GetDescription()}.");
+        }
+        else
+        {
+            human.Life.AddLifeEvent($"Nasceu em {currentDate:yyyy}, {country.GetDescription()}.");
+        }
     }
     #endregion
 }
