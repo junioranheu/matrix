@@ -46,14 +46,17 @@ public static class WorldConsoleReport
         table.AddColumn("Causa da morte");
         table.AddColumn("País de origem");
         table.AddColumn("País atual");
+        table.AddColumn("Pais");
         table.AddColumn("Filhos");
         table.AddColumn("Eventos");
 
         IEnumerable<Human> humans = world.Humans.OrderBy(x => x.Identity.BirthDate);
 
+        Dictionary<Guid, Human> humansByIdDictionary = humans.ToDictionary(x => x.Id);
+
         foreach (Human human in humans)
         {
-            AddHumanRow(table, human);
+            AddHumanRow(table, humansByIdDictionary, human);
         }
 
         AnsiConsole.Write(table);
@@ -66,15 +69,32 @@ public static class WorldConsoleReport
 
     /// <summary>
     /// Adiciona uma linha representando um humano na tabela.
+    /// Exibe informações pessoais, localização, pais, filhos e eventos de vida.
     /// </summary>
     /// <param name="table">
     /// Tabela utilizada para exibição.
     /// </param>
+    /// <param name="humansById">
+    /// Dicionário contendo os humanos indexados por identificador para consultas rápidas de parentesco.
+    /// </param>
     /// <param name="human">
     /// Humano que será exibido.
     /// </param>
-    private static void AddHumanRow(Table table, Human human)
+    private static void AddHumanRow(Table table, Dictionary<Guid, Human> humansById, Human human)
     {
+        // Pais;
+        string parents = string.Join(", ", new[]
+        {
+            human.Family.FatherId is not null && humansById.TryGetValue(human.Family.FatherId.Value, out Human? fatherHuman) ? fatherHuman.Identity.FullName : null,
+            human.Family.MotherId is not null && humansById.TryGetValue(human.Family.MotherId.Value, out Human? motherHuman) ? motherHuman.Identity.FullName : null
+        }.Where(x => !string.IsNullOrWhiteSpace(x)));
+
+        // Filhos;
+        List<string> childrenNames = [.. human.Family.ChildrenIds.Where(humansById.ContainsKey).Select(id => humansById[id].Identity.FullName)];
+        string children = string.Join(", ", childrenNames);
+        string childrenDisplay = childrenNames.Count == 0 ? "—" : $"({childrenNames.Count}) {children}";
+
+        // Tabela;
         table.AddRow(
             $"{human.Identity.BirthDate:yyyy}",
             human.Identity.FullName,
@@ -84,7 +104,8 @@ public static class WorldConsoleReport
             human.Life.CauseOfDeath is null ? "—" : human.Life.CauseOfDeath.GetDescription(),
             human.Location.BirthCountryDescription,
             human.Location.CurrentCountryDescription,
-            human.Family.ChildrenIds.Count.ToString(),
+            string.IsNullOrWhiteSpace(parents) ? "—" : parents,
+            string.IsNullOrWhiteSpace(children) ? "—" : $"({childrenNames.Count}) {children}",
             $"{human.Life.LifeEvents.Count} eventos"
         );
     }
@@ -109,21 +130,13 @@ public static class WorldConsoleReport
 
             Tree tree = new($"[cyan]{human.Identity.FullName}[/]");
 
-            List<string> lifeEvents = [.. human.Life.LifeEvents];
+            int lastBirthdayIndex = human.Life.LifeEvents.FindLastIndex(IsBirthdayEvent);
 
-            int lastAgeEventIndex = lifeEvents.FindLastIndex(x =>
-                x.Contains("COMPLETOU", StringComparison.OrdinalIgnoreCase) &&
-                x.Contains("ANOS", StringComparison.OrdinalIgnoreCase));
-
-            for (int i = 0; i < lifeEvents.Count; i++)
+            for (int i = 0; i < human.Life.LifeEvents.Count; i++)
             {
-                string lifeEvent = lifeEvents[i];
+                string lifeEvent = human.Life.LifeEvents[i];
 
-                bool isAgeEvent =
-                    lifeEvent.Contains("COMPLETOU", StringComparison.OrdinalIgnoreCase) &&
-                    lifeEvent.Contains("ANOS", StringComparison.OrdinalIgnoreCase);
-
-                if (isAgeEvent && i != lastAgeEventIndex)
+                if (IsBirthdayEvent(lifeEvent) && i != lastBirthdayIndex)
                 {
                     continue;
                 }
@@ -134,6 +147,21 @@ public static class WorldConsoleReport
             AnsiConsole.Write(tree);
             AnsiConsole.WriteLine();
         }
+    }
+
+    /// <summary>
+    /// Indica se o evento representa um aniversário.
+    /// </summary>
+    /// <param name="lifeEvent">
+    /// Evento a ser analisado.
+    /// </param>
+    /// <returns>
+    /// True quando o evento representa um aniversário.
+    /// </returns>
+    private static bool IsBirthdayEvent(string lifeEvent)
+    {
+        return lifeEvent.Contains("COMPLETOU", StringComparison.OrdinalIgnoreCase) &&
+               lifeEvent.Contains("ANOS", StringComparison.OrdinalIgnoreCase);
     }
     #endregion
 }
