@@ -8,7 +8,7 @@ public static class WorldConsoleReport
     public static void Print(World world)
     {
         AnsiConsole.WriteLine();
-        AnsiConsole.Write(new Rule("[cyan]Resultado final[/]").RuleStyle("grey"));
+        AnsiConsole.Write(new Rule($"[cyan]Resultado final do mundo {world.Name}[/]").RuleStyle("grey"));
         AnsiConsole.WriteLine();
 
         PrintWorldSummary(world);

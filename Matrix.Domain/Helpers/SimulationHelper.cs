@@ -66,4 +66,67 @@ public static class SimulationHelper
 
         return output;
     }
+
+    #region arrays dos nomes dos planetas
+    private static readonly string[] PLANET_NAME_PREFIXES =
+    [
+        "Alt",
+        "Arc",
+        "Aur",
+        "Bel",
+        "Can",
+        "Cap",
+        "Cer",
+        "Cor",
+        "Del",
+        "Eps",
+        "Gam",
+        "Hel",
+        "Kepl",
+        "Lyr",
+        "Mir",
+        "Nov",
+        "Oph",
+        "Prox",
+        "Rig",
+        "Sir",
+        "Tau",
+        "Veg",
+        "Xan",
+        "Zet"
+    ];
+
+    private static readonly string[] PLANET_NAMES_SUFFIXES =
+    [
+        "a",
+        "ae",
+        "ar",
+        "aris",
+        "ea",
+        "eron",
+        "ia",
+        "ion",
+        "is",
+        "on",
+        "ora",
+        "os",
+        " Prime",
+        "us",
+        "yx"
+    ];
+    #endregion
+
+    /// <summary>
+    /// Gera um nome aleatório para um planeta.
+    /// </summary>
+    /// <returns>
+    /// Nome de planeta gerado proceduralmente.
+    /// </returns>
+    public static string GeneratePlanetName()
+    {
+        string prefix = PLANET_NAME_PREFIXES[Random.Next(PLANET_NAME_PREFIXES.Length)];
+        string suffix = PLANET_NAMES_SUFFIXES[Random.Next(PLANET_NAMES_SUFFIXES.Length)];
+
+        return string.Concat(prefix, suffix);
+    }
 }
