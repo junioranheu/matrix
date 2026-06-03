@@ -53,9 +53,11 @@ public sealed class SimulationFactory
 
         foreach (Human human in humans)
         {
-            ProcessHumanYear(human);
+            ProcessHumanYear(human, currentDate: world.CurrentDate);
 
-            if (TryNaturalDeath(human))
+            bool hasDiedFromNaturalDeath = TryNaturalDeath(human, currentDate: world.CurrentDate);
+
+            if (hasDiedFromNaturalDeath)
             {
                 deaths++;
             }
@@ -72,9 +74,9 @@ public sealed class SimulationFactory
     /// <summary>
     /// Processa a evolução anual de um habitante.
     /// </summary>
-    private static void ProcessHumanYear(Human human)
+    private static void ProcessHumanYear(Human human, DateOnly currentDate)
     {
-        human.Life.AgeOneYear(needs: human.Needs, health: human.Health);
+        human.Life.AgeOneYear(needs: human.Needs, health: human.Health, currentDate);
 
         human.Needs.IncreaseHappiness(RandomHelpers.RandomBetween(-2, 3));
 
@@ -84,7 +86,7 @@ public sealed class SimulationFactory
     /// <summary>
     /// Determina se o habitante morre por causas naturais.
     /// </summary>
-    private static bool TryNaturalDeath(Human human)
+    private static bool TryNaturalDeath(Human human, DateOnly currentDate)
     {
         if (!human.Life.IsAlive)
         {
@@ -112,7 +114,10 @@ public sealed class SimulationFactory
             return false;
         }
 
-        human.Life.Die(needs: human.Needs, health: human.Health, cause: CauseOfDeathEnum.NaturalCauses);
+        human.Life.Die(
+            needs: human.Needs, 
+            cause: CauseOfDeathEnum.NaturalCauses, 
+            currentDate);
 
         return true;
     }

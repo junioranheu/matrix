@@ -17,6 +17,17 @@ public sealed class HumanLife(int age = 0)
     public bool IsAlive { get; private set; } = true;
 
     /// <summary>
+    /// Data da morte.
+    /// </summary>
+    public DateOnly? DateOfDeath { get; private set; } = null;
+
+    /// <summary>
+    /// Ano da morte formatado com quatro dígitos.
+    /// Exemplo: 0001, 0025, 1250.
+    /// </summary>
+    public string DateOfDeathString => DateOfDeath.GetValueOrDefault().Year.ToString("D4");
+
+    /// <summary>
     /// Causa da morte.
     /// </summary>
     public CauseOfDeathEnum? CauseOfDeath { get; private set; } = null;
@@ -51,7 +62,7 @@ public sealed class HumanLife(int age = 0)
     /// <summary>
     /// Incrementa a idade em um ano.
     /// </summary>
-    public void AgeOneYear(HumanNeeds needs, HumanHealth health)
+    public void AgeOneYear(HumanNeeds needs, HumanHealth health, DateOnly currentDate)
     {
         if (CannotAct())
         {
@@ -66,12 +77,12 @@ public sealed class HumanLife(int age = 0)
 
         if (Age >= 65)
         {
-            health.Damage(life: this, needs, RandomHelpers.RandomBetween(0, 3));
+            health.Damage(life: this, needs, amount: RandomHelpers.RandomBetween(0, 3), currentDate);
         }
 
         if (health.Diseases.Count > 0)
         {
-            health.Damage(life: this, needs, health.Diseases.Count);
+            health.Damage(life: this, needs, amount: health.Diseases.Count, currentDate);
         }
 
         AddLifeEvent($"Completou {Age} anos.");
@@ -80,11 +91,11 @@ public sealed class HumanLife(int age = 0)
     /// <summary>
     /// Mata o humano.
     /// </summary>
-    public void Die(HumanNeeds needs, HumanHealth health, CauseOfDeathEnum cause)
+    public void Die(HumanNeeds needs, CauseOfDeathEnum cause, DateOnly dateOfDeath)
     {
         IsAlive = false;
-        health.Damage(life: this, needs, amount: 999);
         needs.DecreaseEnergy(999);
+        DateOfDeath = dateOfDeath;
         CauseOfDeath = cause;
 
         AddLifeEvent($"Faleceu por {cause}.");

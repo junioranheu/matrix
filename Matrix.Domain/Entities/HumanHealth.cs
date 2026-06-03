@@ -49,7 +49,7 @@ public sealed class HumanHealth(int health, int immunity, int fertility, List<Di
     /// <summary>
     /// Aplica dano.
     /// </summary>
-    public void Damage(HumanLife life, HumanNeeds needs, int amount)
+    public void Damage(HumanLife life, HumanNeeds needs, int amount, DateOnly currentDate)
     {
         if (life.CannotAct() || amount <= 0)
         {
@@ -60,7 +60,7 @@ public sealed class HumanHealth(int health, int immunity, int fertility, List<Di
 
         if (Health <= 0)
         {
-            life.Die(needs, health: this, cause: CauseOfDeathEnum.Unknown);
+            life.Die(needs, cause: CauseOfDeathEnum.Unknown, dateOfDeath: currentDate);
         }
     }
 
@@ -150,7 +150,7 @@ public sealed class HumanHealth(int health, int immunity, int fertility, List<Di
     /// <summary>
     /// Contrai uma doença.
     /// </summary>
-    public void ContractDisease(HumanLife life, HumanNeeds needs, HumanEmotions emotions, DiseaseEnum disease)
+    public void ContractDisease(HumanLife life, HumanNeeds needs, HumanEmotions emotions, DiseaseEnum disease, DateOnly currentDate)
     {
         if (Diseases.Contains(disease))
         {
@@ -159,7 +159,7 @@ public sealed class HumanHealth(int health, int immunity, int fertility, List<Di
 
         Diseases.Add(disease);
 
-        Damage(life, needs, amount: 5);
+        Damage(life, needs, amount: 5, currentDate);
 
         needs.DecreaseHappiness(RandomHelpers.RandomBetween(1, 35));
 

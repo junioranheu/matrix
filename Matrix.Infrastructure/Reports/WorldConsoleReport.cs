@@ -64,7 +64,7 @@ public static class WorldConsoleReport
                 human.Identity.BirthDate.ToString(),
                 human.Identity.FullName,
                 human.Life.Age.ToString(),
-                human.Life.IsAlive ? "[cyan]Vivo[/]" : "[red]Morto[/]",
+                human.Life.IsAlive ? "[cyan]Vivo[/]" : $"[red]Morto em {human.Life.DateOfDeathString}[/]",
                 human.Location.BirthCountryDescription,
                 $"{human.Health.Health}%",
                 human.Family.ChildrenIds.Count.ToString(),

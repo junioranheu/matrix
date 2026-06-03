@@ -84,7 +84,7 @@ public sealed class WorldFactory()
     /// Data atual da simulação utilizada para calcular a data de nascimento.
     /// </param>
     /// <param name="manAge">
-    /// Idade do primeiro homem do mundo, utilizada como limite máximo para a idade da mulher.
+    /// Idade do primeiro homem do mundo, utilizada como idade da mulher.
     /// </param>
     /// <param name="manLastName">
     /// Sobrenome do primeiro homem do mundo, utilizado como sobrenome da mulher.
@@ -95,18 +95,11 @@ public sealed class WorldFactory()
             country: startingCountry,
             gender: GenderEnum.Female);
 
-        int womanAge = RandomHelpers.RandomBetween(min: MIN_AGE, max: MAX_AGE);
-
-        if (womanAge > manAge)
-        {
-            womanAge = manAge;
-        }
-
         Human woman = HumanFactory.CreateInitialHuman(
             firstName: womanFirstName,
             lastName: manLastName,
             country: startingCountry,
-            age: womanAge,
+            age: manAge,
             currentYear);
 
         world.AddHuman(woman);
