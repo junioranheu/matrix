@@ -1,4 +1,4 @@
-﻿namespace Matrix.Domain.Enums;
+﻿namespace Matrix.Shared.Enums;
 
 public enum RandomRange
 {

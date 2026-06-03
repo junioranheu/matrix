@@ -1,6 +1,8 @@
 ﻿using Matrix.Domain.Entities;
 using Matrix.Domain.Enums;
 using Matrix.Domain.Helpers;
+using Matrix.Shared.Enums;
+using Matrix.Shared.Helpers;
 
 namespace Matrix.Domain.Factories;
 
@@ -16,18 +18,29 @@ public sealed class HumanFactory
     public static Human CreateInitialHuman(string firstName, string lastName, CountryEnum country)
     {
         return new Human(
-            firstName,
-            lastName,
-            country,
-            health: SimulationHelper.RandomValue(RandomRange.Medium),
-            intelligence: SimulationHelper.RandomValue(RandomRange.Medium),
-            charisma: SimulationHelper.RandomValue(RandomRange.Medium),
-            strength: SimulationHelper.RandomValue(RandomRange.Medium),
-            hunger: SimulationHelper.RandomBetween(0, 25),
-            happiness: SimulationHelper.RandomBetween(75, 100),
-            stress: SimulationHelper.RandomBetween(0, 25),
-            fatherId: null,
-            motherId: null);
+            identity: new HumanIdentity(
+                firstName,
+                lastName,
+                DateOnly.FromDateTime(DateTime.UtcNow)),
+
+            family: new HumanFamily(
+                fatherId: null,
+                motherId: null),
+
+            location: new HumanLocation(
+                birthCountry: country),
+
+            health: new HumanHealth(
+                health: RandomHelpers.RandomValue(RandomRange.Medium),
+                immunity: RandomHelpers.RandomValue(RandomRange.Medium),
+                fertility: RandomHelpers.RandomValue(RandomRange.Medium),
+                diseases: []),
+
+            needs: new HumanNeeds(
+                hunger: RandomHelpers.RandomBetween(0, 25),
+                happiness: RandomHelpers.RandomBetween(75, 100),
+                stress: RandomHelpers.RandomBetween(0, 25),
+                energy: 100));
     }
 
     /// <summary>
@@ -36,17 +49,37 @@ public sealed class HumanFactory
     public static Human CreateChild(Human father, Human mother, string firstName)
     {
         return new Human(
-            firstName,
-            lastName: father.LastName,
-            country: mother.CountryCurrent,
-            health: SimulationHelper.InheritFromParentsValues(father.Health, mother.Health),
-            intelligence: SimulationHelper.InheritFromParentsValues(father.Intelligence, mother.Intelligence),
-            charisma: SimulationHelper.InheritFromParentsValues(father.Charisma, mother.Charisma),
-            strength: SimulationHelper.InheritFromParentsValues(father.Strength, mother.Strength),
-            hunger: SimulationHelper.RandomBetween(0, 50),
-            happiness: SimulationHelper.RandomBetween(50, 100),
-            stress: SimulationHelper.RandomBetween(0, 75),
-            fatherId: father.Id,
-            motherId: mother.Id);
+            identity: new HumanIdentity(
+                firstName,
+                father.Identity.LastName,
+                DateOnly.FromDateTime(DateTime.UtcNow)),
+
+            family: new HumanFamily(
+                fatherId: father.Id,
+                motherId: mother.Id),
+
+            location: new HumanLocation(
+                mother.Location.BirthCountry),
+
+            health: new HumanHealth(
+                health: SimulationHelper.InheritFromParentsValues(
+                    father.Health.Health,
+                    mother.Health.Health),
+
+                immunity: SimulationHelper.InheritFromParentsValues(
+                    father.Health.Immunity,
+                    mother.Health.Immunity),
+
+                fertility: SimulationHelper.InheritFromParentsValues(
+                    father.Health.Fertility,
+                    mother.Health.Fertility),
+
+                diseases: []),
+
+            needs: new HumanNeeds(
+                hunger: RandomHelpers.RandomBetween(0, 50),
+                happiness: RandomHelpers.RandomBetween(50, 100),
+                stress: RandomHelpers.RandomBetween(0, 75),
+                energy: 100));
     }
 }

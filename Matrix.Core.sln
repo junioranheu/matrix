@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Matrix.Infrastructure", "Ma
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Matrix.UnitTests", "Matrix.UnitTests\Matrix.UnitTests.csproj", "{03179069-957C-4B99-B2F1-178D0B6E9F3C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Matrix.Shared", "Matrix.Shared\Matrix.Shared.csproj", "{978376B7-0B55-4B4E-B2EF-210E90F632EA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{03179069-957C-4B99-B2F1-178D0B6E9F3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{03179069-957C-4B99-B2F1-178D0B6E9F3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{03179069-957C-4B99-B2F1-178D0B6E9F3C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{978376B7-0B55-4B4E-B2EF-210E90F632EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{978376B7-0B55-4B4E-B2EF-210E90F632EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{978376B7-0B55-4B4E-B2EF-210E90F632EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{978376B7-0B55-4B4E-B2EF-210E90F632EA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
