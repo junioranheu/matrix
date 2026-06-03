@@ -158,7 +158,8 @@ public sealed class SimulationFactory
                 x.Life.IsAlive &&
                 x.Relationships.PartnerId is null &&
                 x.Identity.Gender != human.Identity.Gender &&
-                Math.Abs(x.Life.Age - human.Life.Age) <= 15)
+                Math.Abs(x.Life.Age - human.Life.Age) <= 15 &&
+                !AreCloseRelatives(world, human, x))
         ];
 
         if (candidates.Count == 0)
@@ -192,7 +193,8 @@ public sealed class SimulationFactory
             .. world.Humans.Where(x =>
                 x.Id != human.Id &&
                 x.Life.IsAlive &&
-                x.Identity.Gender != human.Identity.Gender)
+                x.Identity.Gender != human.Identity.Gender &&
+                !AreCloseRelatives(world, human, x))
         ];
 
         if (candidates.Count == 0)
@@ -234,16 +236,40 @@ public sealed class SimulationFactory
     }
 
     /// <summary>
-    /// Tenta gerar um novo filho utilizando parceiro
-    /// oficial ou amante.
+    /// Obtém o parceiro mais provável para reprodução.
+    /// </summary>
+    private static Human? GetReproductionPartner(World world, Human human)
+    {
+        if (human.Relationships.PartnerId is not null)
+        {
+            Human? partner = world.Humans.FirstOrDefault(x => x.Id == human.Relationships.PartnerId);
+
+            if (CanReproduceWith(world, human, partner))
+            {
+                return partner;
+            }
+        }
+
+        if (human.Relationships.LoversIds.Count > 0)
+        {
+            List<Human> validLovers = [.. world.Humans.Where(x => human.Relationships.LoversIds.Contains(x.Id)).Where(x => CanReproduceWith(world, human, x))];
+
+            if (validLovers.Count > 0)
+            {
+                return validLovers[
+                    RandomHelpers.RandomBetween(0, validLovers.Count - 1)
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Tenta gerar um novo filho utilizando parceiro oficial ou amante.
     /// </summary>
     private static bool TryProcreate(World world, Human human, DateOnly currentDate)
     {
-        if (!human.Life.IsAlive)
-        {
-            return false;
-        }
-
         if (!CanReproduce(human))
         {
             return false;
@@ -277,7 +303,7 @@ public sealed class SimulationFactory
             return false;
         }
 
-        Human newborn = CreateNewborn(partner, human, currentDate);
+        Human newborn = CreateNewborn(father: partner, mother: human, currentDate);
 
         world.Humans.Add(newborn);
 
@@ -285,33 +311,169 @@ public sealed class SimulationFactory
     }
 
     /// <summary>
-    /// Obtém o parceiro mais provável para reprodução.
+    /// Valida se dois humanos podem reproduzir.
     /// </summary>
-    private static Human? GetReproductionPartner(World world, Human human)
+    private static bool CanReproduceWith(World world, Human human, Human? candidate)
     {
-        if (human.Relationships.PartnerId is not null)
+        // O parceiro precisa existir;
+        if (candidate is null)
         {
-            Human? partner = world.Humans.FirstOrDefault(x => x.Id == human.Relationships.PartnerId);
+            return false;
+        }
 
-            if (partner is not null)
+        // Não pode reproduzir consigo mesmo;
+        if (candidate.Id == human.Id)
+        {
+            return false;
+        }
+
+        // Ambos precisam estar vivos;
+        if (!candidate.Life.IsAlive)
+        {
+            return false;
+        }
+
+        // Apenas sexos opostos;
+        if (candidate.Identity.Gender == human.Identity.Gender)
+        {
+            return false;
+        }
+
+        // Ambos precisam estar em idade fértil;
+        if (!CanReproduce(candidate))
+        {
+            return false;
+        }
+
+        // Permite reprodução quando existe alguma conexão territorial
+        // entre os dois humanos, seja pelo país atual ou pelo país de origem.
+        // Exemplos válidos:
+        // - Atual == Atual;
+        // - Atual == Origem;
+        // - Origem == Atual;
+        // - Origem == Origem;
+        bool sameCurrentCountry = candidate.Location.CurrentCountry == human.Location.CurrentCountry;
+        bool candidateCurrentAndHumanBirth = candidate.Location.CurrentCountry == human.Location.BirthCountry;
+        bool candidateBirthAndHumanCurrent = candidate.Location.BirthCountry == human.Location.CurrentCountry;
+        bool sameBirthCountry = candidate.Location.BirthCountry == human.Location.BirthCountry;
+
+        if (!sameCurrentCountry && !candidateCurrentAndHumanBirth && !candidateBirthAndHumanCurrent && !sameBirthCountry)
+        {
+            return false;
+        }
+
+        // Impede qualquer parentesco próximo;
+        if (AreCloseRelatives(world, human, candidate))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Verifica se duas pessoas possuem parentesco próximo.
+    /// </summary>
+    private static bool AreCloseRelatives(World world, Human human, Human candidate)
+    {
+        return IsParentOf(human, candidate) ||
+            IsParentOf(candidate, human) ||
+            AreSiblings(human, candidate) ||
+            IsGrandparentOf(world, human, candidate) ||
+            IsGrandparentOf(world, candidate, human) ||
+            IsUncleOrAuntOf(world, human, candidate) ||
+            IsUncleOrAuntOf(world, candidate, human);
+    }
+
+    /// <summary>
+    /// Verifica se parent é pai ou mãe de child.
+    /// </summary>
+    private static bool IsParentOf(Human parent, Human child)
+    {
+        return child.Family.FatherId == parent.Id ||
+               child.Family.MotherId == parent.Id;
+    }
+
+    /// <summary>
+    /// Verifica se duas pessoas são irmãs ou meio-irmãs.
+    /// </summary>
+    private static bool AreSiblings(Human first, Human second)
+    {
+        Guid? firstFatherId = first.Family.FatherId;
+        Guid? secondFatherId = second.Family.FatherId;
+
+        Guid? firstMotherId = first.Family.MotherId;
+        Guid? secondMotherId = second.Family.MotherId;
+
+        bool sameFather =
+            firstFatherId is not null &&
+            secondFatherId is not null &&
+            firstFatherId == secondFatherId;
+
+        bool sameMother =
+            firstMotherId is not null &&
+            secondMotherId is not null &&
+            firstMotherId == secondMotherId;
+
+        return sameFather || sameMother;
+    }
+
+    /// <summary>
+    /// Verifica se grandparent é avô ou avó de grandchild.
+    /// </summary>
+    private static bool IsGrandparentOf(World world, Human grandparent, Human grandchild)
+    {
+        List<Guid> parentsIds =
+        [
+            grandchild.Family.FatherId ?? Guid.Empty,
+            grandchild.Family.MotherId ?? Guid.Empty
+        ];
+
+        foreach (Guid parentId in parentsIds.Where(x => x != Guid.Empty))
+        {
+            Human? parent = world.Humans.FirstOrDefault(x => x.Id == parentId);
+
+            if (parent is null)
             {
-                return partner;
+                continue;
+            }
+
+            if (IsParentOf(grandparent, parent))
+            {
+                return true;
             }
         }
 
-        if (human.Relationships.LoversIds.Count > 0)
+        return false;
+    }
+
+    /// <summary>
+    /// Verifica se uncle é tio ou tia de nephew.
+    /// </summary>
+    private static bool IsUncleOrAuntOf(World world, Human uncle, Human nephew)
+    {
+        List<Guid> parentsIds =
+        [
+            nephew.Family.FatherId ?? Guid.Empty,
+            nephew.Family.MotherId ?? Guid.Empty
+        ];
+
+        foreach (Guid parentId in parentsIds.Where(x => x != Guid.Empty))
         {
-            Guid loverId = human.Relationships.LoversIds[RandomHelpers.RandomBetween(0, human.Relationships.LoversIds.Count - 1)];
+            Human? parent = world.Humans.FirstOrDefault(x => x.Id == parentId);
 
-            Human? lover = world.Humans.FirstOrDefault(x => x.Id == loverId);
-
-            if (lover is not null)
+            if (parent is null)
             {
-                return lover;
+                continue;
+            }
+
+            if (AreSiblings(uncle, parent))
+            {
+                return true;
             }
         }
 
-        return null;
+        return false;
     }
 
     /// <summary>
