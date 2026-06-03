@@ -6,6 +6,10 @@ using Matrix.Shared.Helpers;
 
 namespace Matrix.Domain.Factories;
 
+/// <summary>
+/// Responsável pela criação e inicialização do mundo da simulação,
+/// incluindo a geração do planeta e dos primeiros habitantes.
+/// </summary>
 public sealed class WorldFactory()
 {
     private const int MIN_AGE = 18;

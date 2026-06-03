@@ -2,7 +2,6 @@
 using Matrix.Domain.Factories;
 using Matrix.Infrastructure.Reports;
 using Matrix.Shared.Helpers;
-using Spectre.Console;
 
 // Configuração do prompt;
 ConsoleConfigurationHelpers.Configure();
@@ -15,22 +14,7 @@ await settings.ConfigureAsync();
 World world = WorldFactory.Create(initialYear: DateOnly.MinValue);
 
 // Simulação;
-// TO DO;
-for (int i = 1; i <= settings.SimulationYears; i++)
-{
-    ConsoleConfigurationHelpers.SetTitle(worldName: world.Name, currentyYear: world.CurrentYear);
-
-    if (settings.ShowEvents)
-    {
-        AnsiConsole.WriteLine();
-        AnsiConsole.Write(new Rule($"[cyan]Ano {world.CurrentDateString}[/]").RuleStyle("grey"));
-        AnsiConsole.WriteLine();
-
-        AnsiConsole.WriteLine($"BLA BLA BLA {world.CurrentYear}");
-    }
-
-    world.AdvanceYear();
-}
+SimulationFactory.StartSimulation(settings, world);
 
 // Output final;
 WorldConsoleReport.Print(world);
