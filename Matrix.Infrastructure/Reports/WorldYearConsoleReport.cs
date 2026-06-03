@@ -61,35 +61,34 @@ public static class WorldYearConsoleReport
     /// </returns>
     private static string BuildContent(World world, bool isFinalReport)
     {
-        IEnumerable<Human> humans = isFinalReport ? world.Humans : world.Humans.Where(x => x.Life.IsAlive);
+        IEnumerable<Human> humans = GetHumansFromWorld(world, isFinalReport);
 
-        int alive = GetAliveCount(world);
-        int births = GetBirthsThisYear(world);
-        int deaths = GetDeathsThisYear(world);
+        int alive = GetAliveCount(humans, isFinalReport);
+        int births = GetBirthsThisYear(humans, currentYear: world.CurrentDate);
+        int deaths = GetDeathsThisYear(humans, currentYear: world.CurrentDate, isFinalReport);
 
-        return world.Humans.Count(x => x.Life.IsAlive == true && x.Identity.Gender == GenderEnum.Male);
+        int men = GetMenCount(humans, isFinalReport);
+        int women = GetWomenCount(humans, isFinalReport);
+        int humansTotal = men + women;
 
-        int men = humans.Count(x => x.Identity.Gender == GenderEnum.Male);
-        int women = humans.Count(x => x.Identity.Gender == GenderEnum.Female);
-        int humansTotal = humans.Count();
+        int children = GetChildrenCount(humans, isFinalReport);
+        int adults = GetAdultsCount(humans, isFinalReport);
+        int elders = GetEldersCount(humans, isFinalReport);
 
-        int children = humans.Count(x => x.Life.Age < 18);
-        int adults = humans.Count(x => x.Life.Age >= 18 && x.Life.Age < 65);
-        int elders = humans.Count(x => x.Life.Age >= 65);
+        int countries = GetCountriesCount(humans);
 
-        int countries = GetCountriesCount(world);
-        string statisticsMode = isFinalReport ? "Todos" : "Apenas vivos";
+        Human? oldestHuman = GetOldestAliveHuman(humans);
+        DateOnly? lastDeathDate = GetLastDeath(humans);
 
-        Human? oldestHuman = humans.MaxBy(x => x.Life.Age);
-        DateOnly? lastDeathDate = world.Humans.Where(x => x.Life.DateOfDeath.HasValue).Max(x => x.Life.DateOfDeath);
+        string statisticsMode = isFinalReport ? "Geral" : "Apenas vivos";
 
         return $"""
         📊 Estatísticas....... {statisticsMode}
 
         🌎 Humanos {(isFinalReport ? "(total)" : "(vivos)")}.... {(isFinalReport ? humansTotal : alive)}
-        👶 Nascimentos........ {births}
+        👶 Nascimentos........ {(isFinalReport ? "-" : births)}
         ⚰️ Mortes............. {deaths}
-        📈 Crescimento........ {births - deaths}
+        📈 Crescimento........ {(isFinalReport ? "-" : births - deaths)}
 
         👨 Homens............. {men}
         👩 Mulheres........... {women}
@@ -106,143 +105,183 @@ public static class WorldYearConsoleReport
     }
 
     /// <summary>
-    /// Obtém a quantidade de humanos vivos.
+    /// Obtém a coleção de humanos que será utilizada no relatório.
     /// </summary>
     /// <param name="world">
-    /// Mundo utilizado para consulta.
+    /// Mundo contendo todos os humanos da simulação.
+    /// </param>
+    /// <param name="isFinalReport">
+    /// Indica se o relatório final está sendo gerado. Quando verdadeiro,
+    /// inclui humanos vivos e mortos; caso contrário, apenas humanos vivos.
+    /// </param>
+    /// <returns>
+    /// Coleção de humanos utilizada para cálculo das estatísticas.
+    /// </returns>
+    private static IEnumerable<Human> GetHumansFromWorld(World world, bool isFinalReport)
+    {
+        IEnumerable<Human> humans = isFinalReport ? world.Humans : world.Humans.Where(x => x.Life.IsAlive);
+
+        return humans;
+    }
+
+    /// <summary>
+    /// Obtém a quantidade de humanos vivos.
+    /// </summary>
+    /// <param name="humans">
+    /// Humanos do mundo utilizados para consulta.
     /// </param>
     /// <returns>
     /// Quantidade de humanos vivos.
     /// </returns>
-    private static int GetAliveCount(World world)
+    private static int GetAliveCount(IEnumerable<Human> humans, bool isFinalReport)
     {
-        return world.Humans.Count(x => x.Life.IsAlive == true);
+        return isFinalReport ? humans.Count() : humans.Count(x => x.Life.IsAlive == true);
     }
 
     /// <summary>
     /// Obtém a quantidade de humanos nascidos no ano atual.
     /// </summary>
-    /// <param name="world">
-    /// Mundo utilizado para consulta.
+    /// <param name="humans">
+    /// Humanos do mundo utilizados para consulta.
+    /// </param>
+    /// <param name="currentYear">
+    /// Ano utilizado para a consulta.
     /// </param>
     /// <returns>
     /// Quantidade de nascimentos ocorridos no ano atual.
     /// </returns>
-    private static int GetBirthsThisYear(World world)
+    private static int GetBirthsThisYear(IEnumerable<Human> humans, DateOnly currentYear)
     {
-        return world.Humans.Count(x => x.Identity.BirthDate.Year == world.CurrentDate.Year);
+        return humans.Count(x => x.Identity.BirthDate.Year == currentYear.Year);
     }
 
     /// <summary>
     /// Obtém a quantidade de humanos que morreram no ano atual.
     /// </summary>
-    /// <param name="world">
-    /// Mundo utilizado para consulta.
+    /// <param name="humans">
+    /// Humanos do mundo utilizados para consulta.
+    /// </param>
+    /// <param name="currentYear">
+    /// Ano utilizado para a consulta.
     /// </param>
     /// <returns>
     /// Quantidade de mortes ocorridas no ano atual.
     /// </returns>
-    private static int GetDeathsThisYear(World world)
+    private static int GetDeathsThisYear(IEnumerable<Human> humans, DateOnly currentYear, bool isFinalReport)
     {
-        return world.Humans.Count(x => x.Life.DateOfDeath.HasValue && x.Life.DateOfDeath.Value.Year == world.CurrentDate.Year);
+        return isFinalReport ? humans.Count(x => x.Life.DateOfDeath.HasValue) : humans.Count(x => x.Life.DateOfDeath.HasValue && x.Life.DateOfDeath.Value.Year == currentYear.Year);
     }
 
     /// <summary>
     /// Obtém a quantidade de homens vivos.
     /// </summary>
-    /// <param name="world">
-    /// Mundo utilizado para consulta.
+    /// <param name="humans">
+    /// Humanos do mundo utilizados para consulta.
     /// </param>
     /// <returns>
     /// Quantidade de homens vivos.
     /// </returns>
-    private static int GetMenCount(World world)
+    private static int GetMenCount(IEnumerable<Human> humans, bool isFinalReport)
     {
-        return world.Humans.Count(x => x.Life.IsAlive == true && x.Identity.Gender == GenderEnum.Male);
+        return isFinalReport ? humans.Count(x => x.Identity.Gender == GenderEnum.Male) : humans.Count(x => x.Life.IsAlive == true && x.Identity.Gender == GenderEnum.Male);
     }
 
     /// <summary>
     /// Obtém a quantidade de mulheres vivas.
     /// </summary>
-    /// <param name="world">
-    /// Mundo utilizado para consulta.
+    /// <param name="humans">
+    /// Humanos do mundo utilizados para consulta.
     /// </param>
     /// <returns>
     /// Quantidade de mulheres vivas.
     /// </returns>
-    private static int GetWomenCount(World world)
+    private static int GetWomenCount(IEnumerable<Human> humans, bool isFinalReport)
     {
-        return world.Humans.Count(x => x.Life.IsAlive == true && x.Identity.Gender == GenderEnum.Female);
+        return isFinalReport ? humans.Count(x => x.Identity.Gender == GenderEnum.Female) : humans.Count(x => x.Life.IsAlive == true && x.Identity.Gender == GenderEnum.Female);
     }
 
     /// <summary>
     /// Obtém a quantidade de crianças vivas.
     /// </summary>
-    /// <param name="world">
-    /// Mundo utilizado para consulta.
+    /// <param name="humans">
+    /// Humanos do mundo utilizados para consulta.
     /// </param>
     /// <returns>
     /// Quantidade de humanos com menos de dezoito anos.
     /// </returns>
-    private static int GetChildrenCount(World world)
+    private static int GetChildrenCount(IEnumerable<Human> humans, bool isFinalReport)
     {
-        return world.Humans.Count(x => x.Life.IsAlive == true && x.Life.Age < 18);
+        return isFinalReport ? humans.Count(x => x.Life.Age < 18) : humans.Count(x => x.Life.IsAlive == true && x.Life.Age < 18);
     }
 
     /// <summary>
     /// Obtém a quantidade de adultos vivos.
     /// </summary>
-    /// <param name="world">
-    /// Mundo utilizado para consulta.
+    /// <param name="humans">
+    /// Humanos do mundo utilizados para consulta.
     /// </param>
     /// <returns>
     /// Quantidade de humanos entre dezoito e sessenta e quatro anos.
     /// </returns>
-    private static int GetAdultsCount(World world)
+    private static int GetAdultsCount(IEnumerable<Human> humans, bool isFinalReport)
     {
-        return world.Humans.Count(x => x.Life.IsAlive == true && x.Life.Age >= 18 && x.Life.Age < 65);
+        return isFinalReport ? humans.Count(x => x.Life.Age >= 18 && x.Life.Age < 65) : humans.Count(x => x.Life.IsAlive == true && x.Life.Age >= 18 && x.Life.Age < 65);
     }
 
     /// <summary>
     /// Obtém a quantidade de idosos vivos.
     /// </summary>
-    /// <param name="world">
-    /// Mundo utilizado para consulta.
+    /// <param name="humans">
+    /// Humanos do mundo utilizados para consulta.
     /// </param>
     /// <returns>
     /// Quantidade de humanos com sessenta e cinco anos ou mais.
     /// </returns>
-    private static int GetEldersCount(World world)
+    private static int GetEldersCount(IEnumerable<Human> humans, bool isFinalReport)
     {
-        return world.Humans.Count(x => x.Life.IsAlive == true && x.Life.Age >= 65);
+        return isFinalReport ? humans.Count(x => x.Life.Age >= 65) : humans.Count(x => x.Life.IsAlive == true && x.Life.Age >= 65);
     }
 
     /// <summary>
     /// Obtém a quantidade de países distintos presentes no mundo.
     /// </summary>
-    /// <param name="world">
-    /// Mundo utilizado para consulta.
+    /// <param name="humans">
+    /// Humanos do mundo utilizados para consulta.
     /// </param>
     /// <returns>
     /// Quantidade de países distintos.
     /// </returns>
-    private static int GetCountriesCount(World world)
+    private static int GetCountriesCount(IEnumerable<Human> humans)
     {
-        return world.Humans.Select(x => x.Location.BirthCountry).Distinct().Count();
+        return humans.Select(x => x.Location.BirthCountry).Distinct().Count();
     }
 
     /// <summary>
     /// Obtém o humano vivo com a maior idade.
     /// </summary>
-    /// <param name="world">
-    /// Mundo utilizado para consulta.
+    /// <param name="humans">
+    /// Humanos do mundo utilizados para consulta.
     /// </param>
     /// <returns>
     /// Humano vivo mais velho ou nulo caso não existam humanos vivos.
     /// </returns>
-    private static Human? GetOldestAliveHuman(World world)
+    private static Human? GetOldestAliveHuman(IEnumerable<Human> humans)
     {
-        return world.Humans.Where(x => x.Life.IsAlive).MaxBy(x => x.Life.Age);
+        return humans.Where(x => x.Life.IsAlive == true).MaxBy(x => x.Life.Age);
+    }
+
+    /// <summary>
+    /// Obtém a data da morte mais recente entre os humanos informados.
+    /// </summary>
+    /// <param name="humans">
+    /// Coleção de humanos utilizada para consulta.
+    /// </param>
+    /// <returns>
+    /// Data da morte mais recente ou nulo caso nenhum humano tenha falecido.
+    /// </returns>
+    private static DateOnly? GetLastDeath(IEnumerable<Human> humans)
+    {
+        return humans.Where(x => x.Life.DateOfDeath.HasValue).Max(x => x.Life.DateOfDeath);
     }
     #endregion
 }
