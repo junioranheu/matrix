@@ -26,7 +26,7 @@ public static class SimulationHelper
     public static (string firstName, string lastName) GenerateRandomName(CountryEnum country, GenderEnum gender)
     {
         HumanNameNationality nationality = HumanNameNationalityMapper.MapFrom(country);
-
+         
         HumanNamePool pool = HumanNames.Pools[nationality];
 
         string[] names = gender switch

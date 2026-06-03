@@ -4,7 +4,10 @@ public enum HumanNameNationality
 {
     Brazilian,
     Western,
+    European,
     Spanish,
     Arab,
-    Asian
+    Asian,
+    African,
+    Indian
 }

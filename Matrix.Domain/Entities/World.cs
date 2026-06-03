@@ -5,7 +5,7 @@ public sealed class World(string name)
     #region props
     public Guid Id { get; } = Guid.NewGuid();
     public string Name { get; } = name;
-    public int CurrentYear { get; private set; } = 0;
+    public int CurrentYear { get; private set; } = 1;
     public List<Human> Humans { get; } = [];
     #endregion
 
