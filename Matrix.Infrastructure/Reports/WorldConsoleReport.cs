@@ -68,7 +68,8 @@ public static class WorldConsoleReport
                 human.Needs.Energy.ToString(),
                 human.Location.BirthCountry.ToString(),
                 human.Family.ChildrenIds.Count.ToString(),
-                human.Health.Diseases.Count.ToString());
+                human.Health.Diseases.Count.ToString()
+            );
         }
 
         AnsiConsole.Write(table);
