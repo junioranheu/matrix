@@ -11,7 +11,7 @@ InitialSettings settings = new();
 await settings.ConfigureAsync();
 
 // Criação do mundo e dos primeiros humanos;
-World world = WorldFactory.Create(initialYear: DateOnly.MinValue);
+World world = WorldFactory.Create(settings, initialYear: DateOnly.MinValue);
 
 // Simulação;
 for (int year = 1; year <= settings.SimulationYears; year++)

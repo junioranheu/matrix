@@ -15,7 +15,7 @@ public sealed class WorldFactory()
     private const int MIN_AGE = 18;
     private const int MAX_AGE = 30;
 
-    public static World Create(DateOnly initialYear)
+    public static World Create(InitialSettings settings, DateOnly initialYear)
     {
         // Cria o mundo;
         World world = new(name: SimulationHelper.GeneratePlanetName(), initialYear);
@@ -23,11 +23,14 @@ public sealed class WorldFactory()
         // Obtém aleatoriamente um país de origem;
         CountryEnum startingCountry = EnumExtensions.GetRandom<CountryEnum>();
 
-        // Cria o primeiro homem do mundo;
-        (int manAge, string manLastName) = CreateFirstManOfTheWorld(world, gender: GenderEnum.Male, startingCountry, currentYear: initialYear);
+        for (int i = 0; i < settings.StartingPopulation; i++)
+        {
+            Human man = CreateMan(world, gender: GenderEnum.Male, startingCountry, currentYear: initialYear);
 
-        // Cria a primeira mulher do mundo;
-        CreateFirstWomanOfTheWorld(world, gender: GenderEnum.Female, startingCountry, currentYear: initialYear, manAge, manLastName);
+            Human woman = CreateWoman(world, gender: GenderEnum.Female, startingCountry, currentYear: initialYear, man);
+
+            Marry(man, woman);
+        }
 
         return world;
     }
@@ -49,11 +52,7 @@ public sealed class WorldFactory()
     /// <param name="currentYear">
     /// Data atual da simulação utilizada para calcular a data de nascimento.
     /// </param>
-    /// <returns>
-    /// Uma tupla contendo a idade e o sobrenome do homem criado.
-    /// Essas informações são utilizadas para a criação da primeira mulher do mundo.
-    /// </returns>
-    private static (int manAge, string manLastName) CreateFirstManOfTheWorld(World world, GenderEnum gender, CountryEnum startingCountry, DateOnly currentYear)
+    private static Human CreateMan(World world, GenderEnum gender, CountryEnum startingCountry, DateOnly currentYear)
     {
         (string manFirstName, string manLastName) = SimulationHelper.GenerateRandomName(country: startingCountry, gender);
 
@@ -69,7 +68,7 @@ public sealed class WorldFactory()
 
         world.AddHuman(man);
 
-        return (manAge, manLastName);
+        return man;
     }
 
     /// <summary>
@@ -88,25 +87,40 @@ public sealed class WorldFactory()
     /// <param name="currentYear">
     /// Data atual da simulação utilizada para calcular a data de nascimento.
     /// </param>
-    /// <param name="manAge">
-    /// Idade do primeiro homem do mundo, utilizada como idade da mulher.
+    /// <param name="man">
+    /// Homem, que deverá ajudar a construir a mulher com sua costela -- não, pera. Apenas o sobrenome e a idade mesmo.
     /// </param>
-    /// <param name="manLastName">
-    /// Sobrenome do primeiro homem do mundo, utilizado como sobrenome da mulher.
-    /// </param>
-    private static void CreateFirstWomanOfTheWorld(World world, GenderEnum gender, CountryEnum startingCountry, DateOnly currentYear, int manAge, string manLastName)
+    private static Human CreateWoman(World world, GenderEnum gender, CountryEnum startingCountry, DateOnly currentYear, Human man)
     {
         (string womanFirstName, string _) = SimulationHelper.GenerateRandomName(country: startingCountry, gender);
 
         Human woman = HumanFactory.CreateInitialHuman(
             gender,
             firstName: womanFirstName,
-            lastName: manLastName,
+            lastName: man.Identity.LastName,
             country: startingCountry,
-            age: manAge,
+            age: man.Life.Age,
             currentYear);
 
         world.AddHuman(woman);
+
+        return woman;
+    }
+
+    /// <summary>
+    /// Realiza o casamento entre dois humanos, registrando o vínculo de parceria
+    /// em ambos os indivíduos.
+    /// </summary>
+    /// <param name="man">
+    /// Homem que participará do casamento.
+    /// </param>
+    /// <param name="woman">
+    /// Mulher que participará do casamento.
+    /// </param>
+    private static void Marry(Human man, Human woman)
+    {
+        man.Relationships.SetPartner(life: man.Life, partnerId: woman.Id);
+        woman.Relationships.SetPartner(life: woman.Life, partnerId: man.Id);
     }
     #endregion
 }
