@@ -28,10 +28,8 @@ public sealed class InitialSettings
     /// </summary>
     public bool ShowEvents { get; set; } = true;
 
-    public async Task ConfigureAsync()
+    public async Task ConfigureAsync(bool isDebug)
     {
-        bool isDebug = System.Diagnostics.Debugger.IsAttached;
-
         AnsiConsole.Clear();
         AnsiConsole.Write(new FigletText(ApplicationConstants.Name).Centered().Color(Color.Cyan1));
         AnsiConsole.WriteLine();
