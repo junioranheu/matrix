@@ -16,7 +16,7 @@ World world = WorldFactory.Create(currentYear: DateOnly.MinValue);
 
 // Simulação;
 // TO DO;
-for (int i = 0; i < 10; i++)
+for (int i = 0; i < settings.SimulationYears; i++)
 {
     ConsoleConfigurationHelpers.SetTitle(worldName: world.Name, currentyYear: world.CurrentYear);
 

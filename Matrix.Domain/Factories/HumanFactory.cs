@@ -15,9 +15,12 @@ public sealed class HumanFactory
     /// <summary>
     /// Cria um humano inicial sem pai ou mãe definidos.
     /// </summary>
-    public static Human CreateInitialHuman(string firstName, string lastName, CountryEnum country, DateOnly currentYear)
+    public static Human CreateInitialHuman(string firstName, string lastName, CountryEnum country, int age, DateOnly currentYear)
     {
         return new Human(
+            life: new HumanLife(
+                age),
+
             identity: new HumanIdentity(
                 firstName,
                 lastName,
@@ -49,6 +52,9 @@ public sealed class HumanFactory
     public static Human CreateChild(Human father, Human mother, string firstName, DateOnly currentYear)
     {
         return new Human(
+               life: new HumanLife(
+                age: 0),
+
             identity: new HumanIdentity(
                 firstName,
                 father.Identity.LastName,

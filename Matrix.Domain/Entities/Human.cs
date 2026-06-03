@@ -1,6 +1,7 @@
 ﻿namespace Matrix.Domain.Entities;
 
 public sealed class Human(
+    HumanLife life,
     HumanIdentity identity,
     HumanFamily family,
     HumanLocation location,
@@ -9,7 +10,8 @@ public sealed class Human(
 {
     public Guid Id { get; private set; } = Guid.NewGuid();
 
-    public HumanLife Life { get; private set; } = new();
+    public HumanLife Life { get; private set; } = new(
+        age: life.Age);
 
     public HumanIdentity Identity { get; private set; } = new(
         firstName: identity.FirstName,

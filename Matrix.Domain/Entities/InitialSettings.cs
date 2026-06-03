@@ -12,11 +12,6 @@ public sealed class InitialSettings
     public int SimulationYears { get; set; } = DateTime.UtcNow.Year;
 
     /// <summary>
-    /// Quantidade inicial de pessoas.
-    /// </summary>
-    public int InitialPopulation { get; set; } = 2;
-
-    /// <summary>
     /// Exibe os eventos durante a simulação.
     /// </summary>
     public bool ShowEvents { get; set; } = true;
@@ -39,8 +34,7 @@ public sealed class InitialSettings
         {
             AnsiConsole.Write(new Rule("[cyan]Modo debug ativado[/]").RuleStyle("grey"));
 
-            SimulationYears = DateTime.UtcNow.Year;
-            InitialPopulation = 2;
+            SimulationYears = 100;
             ShowEvents = true;
         }
         else
@@ -58,15 +52,6 @@ public sealed class InitialSettings
                     ValidationErrorMessage($"[red]A quantidade de anos da simulação deve estar entre {minSimulationYears} e {maxSimulationYears}.[/]").
                     Validate(x => x >= minSimulationYears && x <= maxSimulationYears));
 
-            const int minInitialPopulation = 2;
-            const int maxInitialPopulation = 999_999;
-
-            InitialPopulation = AnsiConsole.Prompt(
-                new TextPrompt<int>("Quantas pessoas devem existir inicialmente?").
-                    PromptStyle("cyan").
-                    ValidationErrorMessage($"[red]A população inicial deve estar entre {minInitialPopulation} e {maxInitialPopulation}.[/]").
-                    Validate(x => x >= minInitialPopulation && x <= maxInitialPopulation));
-
             ShowEvents = AnsiConsole.Prompt(
                 new SelectionPrompt<bool>().
                     Title("Deseja exibir os eventos durante a simulação?").
@@ -83,7 +68,6 @@ public sealed class InitialSettings
         table.AddColumn("[cyan]Valor[/]");
 
         table.AddRow("Anos simulados", SimulationYears.ToString());
-        table.AddRow("População inicial", InitialPopulation.ToString());
         table.AddRow("Exibir eventos", ShowEvents ? "Sim" : "Não");
 
         AnsiConsole.Write(table);

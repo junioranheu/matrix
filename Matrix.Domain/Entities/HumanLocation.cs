@@ -1,4 +1,5 @@
 ﻿using Matrix.Domain.Enums;
+using Matrix.Shared.Extensions;
 
 namespace Matrix.Domain.Entities;
 
@@ -14,6 +15,11 @@ public sealed class HumanLocation(CountryEnum birthCountry)
     /// País atual.
     /// </summary>
     public CountryEnum CurrentCountry { get; private set; } = birthCountry;
+
+    /// <summary>
+    /// Descrição do país de nascimento;
+    /// </summary>
+    public string BirthCountryDescription => BirthCountry.GetDescription();
     #endregion
 
     #region methods

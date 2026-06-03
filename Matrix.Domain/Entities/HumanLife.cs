@@ -3,13 +3,13 @@ using Matrix.Shared.Helpers;
 
 namespace Matrix.Domain.Entities;
 
-public sealed class HumanLife
+public sealed class HumanLife(int age = 0)
 {
     #region props
     /// <summary>
     /// Idade atual.
     /// </summary>
-    public int Age { get; private set; } = 0;
+    public int Age { get; private set; } = age;
 
     /// <summary>
     /// Indica se está vivo.

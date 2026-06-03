@@ -19,7 +19,8 @@ public static class WorldConsoleReport
     private static void PrintWorldSummary(World world)
     {
         int countriesCount = world.Humans.Select(x => x.Location.BirthCountry).Distinct().Count();
-        string title = $"{world.Name} | ano {world.CurrentYear}";
+        // string title = $"Mundo {world.Name} · ano {world.CurrentYear}";
+        string title = world.CurrentYear == 1 ? "Resumo" : $"Resumo dos {world.CurrentYear} anos";
 
         Panel panel = new(
             $"""
@@ -29,7 +30,8 @@ public static class WorldConsoleReport
         )
         {
             Header = new PanelHeader(title),
-            Border = BoxBorder.Rounded
+            Border = BoxBorder.Rounded,
+            Width = 30
         };
 
         AnsiConsole.Write(panel);
@@ -54,15 +56,17 @@ public static class WorldConsoleReport
         table.AddColumn("Filhos");
         table.AddColumn("Doenças");
 
-        foreach (var human in world.Humans.OrderBy(x => x.Identity.BirthDate))
+        IEnumerable<Human> humans = world.Humans.OrderBy(x => x.Identity.BirthDate);
+
+        foreach (var human in humans)
         {
             table.AddRow(
                 human.Identity.BirthDate.ToString(),
                 human.Identity.FullName,
                 human.Life.Age.ToString(),
                 human.Life.IsAlive ? "[cyan]Vivo[/]" : "[red]Morto[/]",
-               human.Location.BirthCountry.ToString(),
-                human.Health.Health.ToString(),
+                human.Location.BirthCountryDescription,
+                $"{human.Health.Health}%",
                 human.Family.ChildrenIds.Count.ToString(),
                 human.Health.Diseases.Count.ToString()
             );
