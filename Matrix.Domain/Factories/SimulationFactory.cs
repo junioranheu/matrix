@@ -35,6 +35,11 @@ public sealed class SimulationFactory
         {
             StartYear(world);
 
+            if (!HasAliveHumans(world))
+            {
+                return;
+            }
+
             ProcessPopulation(world);
 
             yearReport.Invoke(settings, world, isFinalReport);
@@ -46,6 +51,20 @@ public sealed class SimulationFactory
     }
 
     #region methods
+    /// <summary>
+    /// Verifica se ainda existe ao menos um humano vivo no mundo.
+    /// </summary>
+    /// <param name="world">
+    /// Mundo utilizado para consulta.
+    /// </param>
+    /// <returns>
+    /// Verdadeiro quando existe ao menos um humano vivo; caso contrário, falso.
+    /// </returns>
+    private static bool HasAliveHumans(World world)
+    {
+        return world.Humans.Any(x => x.Life.IsAlive);
+    }
+
     /// <summary>
     /// Executa as ações de preparação do ano atual.
     /// </summary>

@@ -36,7 +36,7 @@ public sealed class InitialSettings
         {
             AnsiConsole.Write(new Rule("[cyan]Modo debug ativado[/]").RuleStyle("grey"));
 
-            SimulationYears = 100;
+            SimulationYears = DateTime.UtcNow.Year;
             StartingPopulation = 4;
             ShowEvents = true;
         }

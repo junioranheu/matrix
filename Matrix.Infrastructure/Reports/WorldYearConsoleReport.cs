@@ -63,13 +63,12 @@ public static class WorldYearConsoleReport
     {
         IEnumerable<Human> humans = GetHumansFromWorld(world, isFinalReport);
 
-        int alive = GetAliveCount(humans, isFinalReport);
+        int humansCount = GetHumansCount(humans, isFinalReport);
         int births = GetBirthsThisYear(humans, currentYear: world.CurrentDate);
         int deaths = GetDeathsThisYear(humans, currentYear: world.CurrentDate, isFinalReport);
 
         int men = GetMenCount(humans, isFinalReport);
         int women = GetWomenCount(humans, isFinalReport);
-        int humansTotal = men + women;
 
         int children = GetChildrenCount(humans, isFinalReport);
         int adults = GetAdultsCount(humans, isFinalReport);
@@ -85,7 +84,7 @@ public static class WorldYearConsoleReport
         return $"""
         📊 Estatísticas....... {statisticsMode}
 
-        🌎 Humanos {(isFinalReport ? "(total)" : "(vivos)")}.... {(isFinalReport ? humansTotal : alive)}
+        🌎 Humanos {(isFinalReport ? "(total)" : "(vivos)")}.... {humansCount} {(isFinalReport ? $"({humansCount - deaths} vivos)" : string.Empty)}
         👶 Nascimentos........ {(isFinalReport ? "-" : births)}
         ⚰️ Mortes............. {deaths}
         📈 Crescimento........ {(isFinalReport ? "-" : births - deaths)}
@@ -125,15 +124,15 @@ public static class WorldYearConsoleReport
     }
 
     /// <summary>
-    /// Obtém a quantidade de humanos vivos.
+    /// Obtém a quantidade de humanos.
     /// </summary>
     /// <param name="humans">
     /// Humanos do mundo utilizados para consulta.
     /// </param>
     /// <returns>
-    /// Quantidade de humanos vivos.
+    /// Quantidade de humanos.
     /// </returns>
-    private static int GetAliveCount(IEnumerable<Human> humans, bool isFinalReport)
+    private static int GetHumansCount(IEnumerable<Human> humans, bool isFinalReport)
     {
         return isFinalReport ? humans.Count() : humans.Count(x => x.Life.IsAlive == true);
     }
