@@ -18,20 +18,28 @@ public static class WorldYearConsoleReport
     /// <param name="world">
     /// Mundo contendo os humanos e informações utilizadas para gerar o relatório.
     /// </param>
-    public static void Print(InitialSettings settings, World world)
+    /// <param name="isFinalReport">
+    /// Relatório final. Também indica se as estatísticas devem incluir humanos mortos (ou seja, todos!).
+    /// </param>
+    public static void Print(InitialSettings settings, World world, bool isFinalReport)
     {
-        if (!settings.ShowEvents)
+        if (!isFinalReport && !settings.ShowEvents)
         {
             return;
         }
 
-        AnsiConsole.WriteLine();
-        AnsiConsole.Write(new Rule($"[cyan]Ano {world.CurrentDateString}[/]").RuleStyle("grey"));
-        AnsiConsole.WriteLine();
-
-        Panel panel = new(BuildContent(world))
+        if (!isFinalReport)
         {
-            Header = new PanelHeader($"Resumo do ano {world.CurrentDateString}"),
+            AnsiConsole.WriteLine();
+            AnsiConsole.Write(new Rule($"[cyan]Ano {world.CurrentDateString}[/]").RuleStyle("grey"));
+            AnsiConsole.WriteLine();
+        }
+
+        string title = isFinalReport ? $"Resumo dos {world.CurrentYear} anos" : $"Resumo do ano {world.CurrentDateString}";
+
+        Panel panel = new(BuildContent(world, isFinalReport))
+        {
+            Header = new PanelHeader(title),
             Border = BoxBorder.Rounded
         };
 
@@ -39,50 +47,62 @@ public static class WorldYearConsoleReport
     }
 
     #region methods
-
     /// <summary>
     /// Monta o conteúdo textual exibido no painel de resumo anual.
     /// </summary>
     /// <param name="world">
     /// Mundo utilizado como fonte das estatísticas.
     /// </param>
+    /// <param name="isFinalReport">
+    /// Relatório final. Também indica se as estatísticas devem incluir humanos mortos (ou seja, todos!).
+    /// </param>
     /// <returns>
     /// Texto formatado contendo os indicadores do ano atual.
     /// </returns>
-    private static string BuildContent(World world)
+    private static string BuildContent(World world, bool isFinalReport)
     {
+        IEnumerable<Human> humans = isFinalReport ? world.Humans : world.Humans.Where(x => x.Life.IsAlive);
+
         int alive = GetAliveCount(world);
         int births = GetBirthsThisYear(world);
         int deaths = GetDeathsThisYear(world);
 
-        int men = GetMenCount(world);
-        int women = GetWomenCount(world);
+        return world.Humans.Count(x => x.Life.IsAlive == true && x.Identity.Gender == GenderEnum.Male);
 
-        int children = GetChildrenCount(world);
-        int adults = GetAdultsCount(world);
-        int elders = GetEldersCount(world);
+        int men = humans.Count(x => x.Identity.Gender == GenderEnum.Male);
+        int women = humans.Count(x => x.Identity.Gender == GenderEnum.Female);
+        int humansTotal = humans.Count();
+
+        int children = humans.Count(x => x.Life.Age < 18);
+        int adults = humans.Count(x => x.Life.Age >= 18 && x.Life.Age < 65);
+        int elders = humans.Count(x => x.Life.Age >= 65);
 
         int countries = GetCountriesCount(world);
+        string statisticsMode = isFinalReport ? "Todos" : "Apenas vivos";
 
-        Human? oldestHuman = GetOldestAliveHuman(world);
+        Human? oldestHuman = humans.MaxBy(x => x.Life.Age);
+        DateOnly? lastDeathDate = world.Humans.Where(x => x.Life.DateOfDeath.HasValue).Max(x => x.Life.DateOfDeath);
 
         return $"""
-            🌎 Humanos vivos...... {alive}
-            👶 Nascimentos........ {births}
-            ⚰️ Mortes............. {deaths}
-            📈 Crescimento........ {births - deaths}
+        📊 Estatísticas....... {statisticsMode}
 
-            👨 Homens............. {men}
-            👩 Mulheres........... {women}
+        🌎 Humanos {(isFinalReport ? "(total)" : "(vivos)")}.... {(isFinalReport ? humansTotal : alive)}
+        👶 Nascimentos........ {births}
+        ⚰️ Mortes............. {deaths}
+        📈 Crescimento........ {births - deaths}
 
-            👶 Crianças........... {children}
-            🧑 Adultos............ {adults}
-            👴 Idosos............. {elders}
+        👨 Homens............. {men}
+        👩 Mulheres........... {women}
 
-            🏳️ Países............. {countries}
+        👶 Crianças........... {children}
+        🧑 Adultos............ {adults}
+        👴 Idosos............. {elders}
 
-            🥇 Mais velho......... {(oldestHuman is null ? "—" : $"{oldestHuman.Identity.FullName} ({oldestHuman.Life.Age})")}
-            """;
+        🏳️ Países............. {countries}
+
+        🥇 Mais velho......... {(oldestHuman is null ? "—" : $"{oldestHuman.Identity.FullName} ({oldestHuman.Life.Age})")}
+        ⚰️ Última morte....... {(lastDeathDate is null ? "—" : $"ano {lastDeathDate.Value:yyyy}")}
+        """;
     }
 
     /// <summary>
@@ -96,7 +116,7 @@ public static class WorldYearConsoleReport
     /// </returns>
     private static int GetAliveCount(World world)
     {
-        return world.Humans.Count(x => x.Life.IsAlive);
+        return world.Humans.Count(x => x.Life.IsAlive == true);
     }
 
     /// <summary>

@@ -6,7 +6,7 @@ namespace Matrix.Infrastructure.Reports;
 
 public static class WorldConsoleReport
 {
-    public static void Print(World world)
+    public static void Print(InitialSettings settings, World world)
     {
         AnsiConsole.WriteLine();
         AnsiConsole.Write(new Rule($"[cyan]Resultado final do mundo {world.Name}[/]").RuleStyle("grey"));
@@ -14,32 +14,10 @@ public static class WorldConsoleReport
 
         PrintHumans(world);
 
-        PrintWorldSummary(world);
+        WorldYearConsoleReport.Print(settings, world, isFinalReport: true);
     }
 
-    private static void PrintWorldSummary(World world)
-    {
-        int countriesCount = world.Humans.Select(x => x.Location.BirthCountry).Distinct().Count();
-        string title = world.CurrentYear == 1 ? "Resumo" : $"Resumo dos {world.CurrentYear} anos";
-        DateOnly? lastDeathDate = world.Humans.Where(x => x.Life.DateOfDeath.HasValue).Max(x => x.Life.DateOfDeath);
-
-        Panel panel = new(
-            $"""
-            Humanos: {world.Humans.Count}
-            Países: {countriesCount}
-            Ultima morte: {(lastDeathDate is null ? "—" : $"ano {lastDeathDate.Value:yyyy}")}
-            """
-        )
-        {
-            Header = new PanelHeader(title),
-            Border = BoxBorder.Rounded,
-            Width = 30
-        };
-
-        AnsiConsole.Write(panel);
-        AnsiConsole.WriteLine();
-    }
-
+    #region methods
     private static void PrintHumans(World world)
     {
         Table table = new()
@@ -76,4 +54,5 @@ public static class WorldConsoleReport
 
         AnsiConsole.Write(table);
     }
+    #endregion
 }

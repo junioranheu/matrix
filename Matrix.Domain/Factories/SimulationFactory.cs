@@ -1,6 +1,7 @@
 ﻿using Matrix.Domain.Entities;
 using Matrix.Domain.Enums;
 using Matrix.Domain.Helpers;
+using Matrix.Shared.Extensions;
 using Matrix.Shared.Helpers;
 
 namespace Matrix.Domain.Factories;
@@ -25,7 +26,10 @@ public sealed class SimulationFactory
     private const int NATURAL_DEATH_AGE_100 = 97;
     #endregion
 
-    public static void Run(InitialSettings settings, World world, Action<InitialSettings, World> yearReport)
+    /// <summary>
+    /// Executa a simulação completa.
+    /// </summary>
+    public static void Run(InitialSettings settings, World world, bool isFinalReport, Action<InitialSettings, World, bool> yearReport)
     {
         for (int year = 0; year < settings.SimulationYears; year++)
         {
@@ -33,10 +37,12 @@ public sealed class SimulationFactory
 
             ProcessPopulation(world);
 
-            yearReport.Invoke(settings, world);
+            yearReport.Invoke(settings, world, isFinalReport);
 
             EndYear(world);
         }
+
+        ConsoleConfigurationHelpers.SetTitle(world.Name, world.CurrentYear);
     }
 
     #region methods
@@ -45,41 +51,49 @@ public sealed class SimulationFactory
     /// </summary>
     private static void StartYear(World world)
     {
-        ConsoleConfigurationHelpers.SetTitle(worldName: world.Name, currentyYear: world.CurrentYear);
+        ConsoleConfigurationHelpers.SetTitle(world.Name, world.CurrentYear);
     }
 
     /// <summary>
-    /// Processa todos os habitantes vivos do mundo.
+    /// Processa todos os habitantes vivos do mundo,
+    /// executando eventos sociais, familiares,
+    /// econômicos e biológicos.
     /// </summary>
     private static void ProcessPopulation(World world)
     {
         List<Human> humans = [.. world.Humans.Where(x => x.Life.IsAlive)];
 
-        int births = 0;
-        int deaths = 0;
-
         foreach (Human human in humans)
         {
-            ProcessHumanYear(human, currentDate: world.CurrentDate);
+            ProcessHumanYear(human, world.CurrentDate);
 
-            bool hasGivenBirth = TryProcreate(world, human, currentDate: world.CurrentDate);
+            TryCreateRelationship(world, human);
 
-            if (hasGivenBirth)
-            {
-                births++;
-            }
+            TryFindLover(world, human);
 
-            bool hasDiedFromNaturalDeath = TryNaturalDeath(human, currentDate: world.CurrentDate);
+            TryBreakRelationship(world, human);
 
-            if (hasDiedFromNaturalDeath)
-            {
-                deaths++;
-            }
+            TryGainHappiness(human);
+
+            TryLoseHappiness(human);
+
+            TryBecomeRich(human);
+
+            TryBecomePoor(human);
+
+            TryMoveCountry(human);
+
+            TryAccident(human, world.CurrentDate);
+
+            TryProcreate(world, human, world.CurrentDate);
+
+            TryNaturalDeath(world, human, world.CurrentDate);
         }
     }
 
     /// <summary>
-    /// Processa a evolução anual de um habitante.
+    /// Executa a evolução natural do habitante,
+    /// incluindo envelhecimento, felicidade e saúde.
     /// </summary>
     private static void ProcessHumanYear(Human human, DateOnly currentDate)
     {
@@ -91,7 +105,116 @@ public sealed class SimulationFactory
     }
 
     /// <summary>
-    /// Tenta realizar uma procriação com base no habitante informado.
+    /// Tenta criar um relacionamento estável
+    /// entre dois habitantes solteiros.
+    /// </summary>
+    private static void TryCreateRelationship(World world, Human human)
+    {
+        if (!human.Life.IsAlive)
+        {
+            return;
+        }
+
+        if (human.Relationships.PartnerId is not null)
+        {
+            return;
+        }
+
+        if (human.Life.Age < 18)
+        {
+            return;
+        }
+
+        if (RandomHelpers.RandomBetween(1, 100) > 3)
+        {
+            return;
+        }
+
+        List<Human> candidates =
+        [
+            .. world.Humans.Where(x =>
+                x.Id != human.Id &&
+                x.Life.IsAlive &&
+                x.Relationships.PartnerId is null &&
+                x.Identity.Gender != human.Identity.Gender &&
+                Math.Abs(x.Life.Age - human.Life.Age) <= 15)
+        ];
+
+        if (candidates.Count == 0)
+        {
+            return;
+        }
+
+        Human partner = candidates[RandomHelpers.RandomBetween(0, candidates.Count - 1)];
+
+        human.Relationships.SetPartner(life: human.Life, partnerId: partner.Id);
+        partner.Relationships.SetPartner(life: partner.Life, partnerId: human.Id);
+    }
+
+    /// <summary>
+    /// Tenta criar um relacionamento extraconjugal.
+    /// </summary>
+    private static void TryFindLover(World world, Human human)
+    {
+        if (human.Relationships.PartnerId is null)
+        {
+            return;
+        }
+
+        if (RandomHelpers.RandomBetween(1, 1000) > 5)
+        {
+            return;
+        }
+
+        List<Human> candidates =
+        [
+            .. world.Humans.Where(x =>
+                x.Id != human.Id &&
+                x.Life.IsAlive &&
+                x.Identity.Gender != human.Identity.Gender)
+        ];
+
+        if (candidates.Count == 0)
+        {
+            return;
+        }
+
+        Human lover = candidates[RandomHelpers.RandomBetween(0, candidates.Count - 1)];
+
+        human.Relationships.AddLover(life: human.Life, loverId: lover.Id);
+    }
+
+    /// <summary>
+    /// Tenta encerrar um relacionamento existente.
+    /// </summary>
+    private static void TryBreakRelationship(World world, Human human)
+    {
+        if (human.Relationships.PartnerId is null)
+        {
+            return;
+        }
+
+        int chance = 1;
+
+        if (human.Needs.Happiness < 30)
+        {
+            chance += 4;
+        }
+
+        if (RandomHelpers.RandomBetween(1, 100) > chance)
+        {
+            return;
+        }
+
+        Human? partner = world.Humans.FirstOrDefault(x => x.Id == human.Relationships.PartnerId);
+
+        human.Relationships.RemovePartner();
+        partner?.Relationships.RemovePartner();
+    }
+
+    /// <summary>
+    /// Tenta gerar um novo filho utilizando parceiro
+    /// oficial ou amante.
     /// </summary>
     private static bool TryProcreate(World world, Human human, DateOnly currentDate)
     {
@@ -119,7 +242,9 @@ public sealed class SimulationFactory
 
         int chance = GetReproductionChance(human.Life.Age);
 
-        if (chance == 0)
+        chance += GetChildrenModifier(human);
+
+        if (chance <= 0)
         {
             return false;
         }
@@ -131,7 +256,7 @@ public sealed class SimulationFactory
             return false;
         }
 
-        Human newborn = CreateNewborn(father: partner, mother: human, currentDate);
+        Human newborn = CreateNewborn(partner, human, currentDate);
 
         world.Humans.Add(newborn);
 
@@ -139,7 +264,56 @@ public sealed class SimulationFactory
     }
 
     /// <summary>
-    /// Verifica se o habitante está dentro da faixa fértil.
+    /// Obtém o parceiro mais provável para reprodução.
+    /// </summary>
+    private static Human? GetReproductionPartner(World world, Human human)
+    {
+        if (human.Relationships.PartnerId is not null)
+        {
+            Human? partner = world.Humans.FirstOrDefault(x => x.Id == human.Relationships.PartnerId);
+
+            if (partner is not null)
+            {
+                return partner;
+            }
+        }
+
+        if (human.Relationships.LoversIds.Count > 0)
+        {
+            Guid loverId = human.Relationships.LoversIds[RandomHelpers.RandomBetween(0, human.Relationships.LoversIds.Count - 1)];
+
+            Human? lover = world.Humans.FirstOrDefault(x => x.Id == loverId);
+
+            if (lover is not null)
+            {
+                return lover;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Reduz a fertilidade conforme a quantidade
+    /// de filhos já existentes.
+    /// </summary>
+    private static int GetChildrenModifier(Human human)
+    {
+        int children = human.Family.ChildrenIds.Count;
+
+        return children switch
+        {
+            0 => 0,
+            1 => -2,
+            2 => -5,
+            3 => -10,
+            4 => -15,
+            _ => -25
+        };
+    }
+
+    /// <summary>
+    /// Verifica se o habitante está em idade fértil.
     /// </summary>
     private static bool CanReproduce(Human human)
     {
@@ -149,66 +323,15 @@ public sealed class SimulationFactory
     }
 
     /// <summary>
-    /// Seleciona aleatoriamente um parceiro compatível para reprodução.
-    /// </summary>
-    private static Human? GetReproductionPartner(World world, Human human)
-    {
-        List<Human> candidates = [.. world.Humans.Where(x =>
-            x.Life.IsAlive == true &&  // Precisa estar vivo;
-            x.Identity.Gender != human.Identity.Gender && // Precisa ser do sexo oposto;
-            x.Life.Age >= MIN_REPRODUCTION_AGE && // Precisa ter idade mínima para reprodução;
-            x.Life.Age <= MAX_REPRODUCTION_AGE && // Precisa estar abaixo da idade máxima para reprodução;
-            !AreParentAndChild(human, x) && // Não pode ser pais/filhos;
-            !AreSiblings(human, x) // Não pode ser irmão ou irmã;
-        )];
-
-        if (candidates.Count == 0)
-        {
-            return null;
-        }
-
-        int index = RandomHelpers.RandomBetween(0, candidates.Count - 1);
-
-        return candidates[index];
-    }
-
-    /// <summary>
-    /// Verifica se são pais/filhos;
-    /// </summary>
-    private static bool AreParentAndChild(Human a, Human b)
-    {
-        return a.Id == b.Family.FatherId ||
-               a.Id == b.Family.MotherId ||
-               b.Id == a.Family.FatherId ||
-               b.Id == a.Family.MotherId;
-    }
-
-    /// <summary>
-    /// Verifica se são irmãos;
-    /// </summary>
-    private static bool AreSiblings(Human a, Human b)
-    {
-        return a.Family.FatherId != null &&
-               a.Family.FatherId == b.Family.FatherId &&
-               a.Family.MotherId != null &&
-               a.Family.MotherId == b.Family.MotherId;
-    }
-
-    /// <summary>
-    /// Cria um novo habitante recém-nascido.
+    /// Cria um novo habitante e registra os pais.
     /// </summary>
     private static Human CreateNewborn(Human father, Human mother, DateOnly currentDate)
     {
         GenderEnum gender = RandomHelpers.RandomBetween(0, 1) == 0 ? GenderEnum.Male : GenderEnum.Female;
 
-        (string firstName, string _) = SimulationHelper.GenerateRandomName(country: mother.Location.BirthCountry, gender: gender);
+        (string firstName, string _) = SimulationHelper.GenerateRandomName(mother.Location.BirthCountry, gender);
 
-        Human child = HumanFactory.CreateChild(
-            gender: gender,
-            father,
-            mother,
-            firstName: firstName,
-            currentDate);
+        Human child = HumanFactory.CreateChild(gender, father, mother, firstName, currentDate);
 
         father.Family.AddChild(life: father.Life, needs: father.Needs, childId: child.Id);
 
@@ -218,7 +341,7 @@ public sealed class SimulationFactory
     }
 
     /// <summary>
-    /// Determina a chance de reprodução conforme a idade.
+    /// Determina a chance de reprodução pela idade.
     /// </summary>
     private static int GetReproductionChance(int age)
     {
@@ -232,9 +355,131 @@ public sealed class SimulationFactory
     }
 
     /// <summary>
+    /// Tenta aplicar um acidente fatal aleatório.
+    /// </summary>
+    private static void TryAccident(Human human, DateOnly currentDate)
+    {
+        if (!human.Life.IsAlive)
+        {
+            return;
+        }
+
+        if (RandomHelpers.RandomBetween(1, 1000) > 2)
+        {
+            return;
+        }
+
+        human.Life.Die(needs: human.Needs, cause: CauseOfDeathEnum.Accident, dateOfDeath: currentDate);
+    }
+
+    /// <summary>
+    /// Evento raro de enriquecimento.
+    /// Pode representar herança, negócio bem sucedido,
+    /// prêmio ou investimento lucrativo.
+    /// </summary>
+    private static void TryBecomeRich(Human human)
+    {
+        if (!human.Life.IsAlive)
+        {
+            return;
+        }
+
+        if (RandomHelpers.RandomBetween(1, 1000) > 2)
+        {
+            return;
+        }
+
+        decimal amount = RandomHelpers.RandomBetween(min: 5_000, max: 100_000);
+
+        human.Finance.EarnMoney(life: human.Life, amount);
+
+        human.Needs.IncreaseHappiness(15);
+    }
+
+    /// <summary>
+    /// Evento raro de perda financeira.
+    /// Pode representar golpes, dívidas,
+    /// investimentos ruins ou acidentes.
+    /// </summary>
+    private static void TryBecomePoor(Human human)
+    {
+        if (!human.Life.IsAlive)
+        {
+            return;
+        }
+
+        if (RandomHelpers.RandomBetween(1, 1000) > 5)
+        {
+            return;
+        }
+
+        decimal amount = RandomHelpers.RandomBetween(min: 1_000, max: 50_000);
+
+        human.Finance.SpendMoney(life: human.Life, amount);
+
+        human.Needs.IncreaseHappiness(-10);
+    }
+
+    /// <summary>
+    /// Evento raro de migração.
+    /// Representa mudança de país por trabalho,
+    /// relacionamento ou busca por melhores condições.
+    /// </summary>
+    private static void TryMoveCountry(Human human)
+    {
+        if (!human.Life.IsAlive)
+        {
+            return;
+        }
+
+        if (human.Life.Age < 18)
+        {
+            return;
+        }
+
+        if (RandomHelpers.RandomBetween(1, 1000) > 3)
+        {
+            return;
+        }
+
+        CountryEnum destination = EnumExtensions.GetRandom<CountryEnum>();
+
+        if (destination == human.Location.CurrentCountry)
+        {
+            return;
+        }
+
+        human.Location.MoveToCountry(life: human.Life, destination);
+
+        human.Needs.IncreaseHappiness(RandomHelpers.RandomBetween(-5, 20));
+    }
+
+    /// <summary>
+    /// Evento positivo que aumenta felicidade.
+    /// </summary>
+    private static void TryGainHappiness(Human human)
+    {
+        if (RandomHelpers.RandomBetween(1, 100) <= 5)
+        {
+            human.Needs.IncreaseHappiness(10);
+        }
+    }
+
+    /// <summary>
+    /// Evento negativo que reduz felicidade.
+    /// </summary>
+    private static void TryLoseHappiness(Human human)
+    {
+        if (RandomHelpers.RandomBetween(1, 100) <= 5)
+        {
+            human.Needs.IncreaseHappiness(-10);
+        }
+    }
+
+    /// <summary>
     /// Determina se o habitante morre por causas naturais.
     /// </summary>
-    private static bool TryNaturalDeath(Human human, DateOnly currentDate)
+    private static bool TryNaturalDeath(World world, Human human, DateOnly currentDate)
     {
         if (!human.Life.IsAlive)
         {
@@ -262,7 +507,11 @@ public sealed class SimulationFactory
             return false;
         }
 
-        human.Life.Die(needs: human.Needs, cause: CauseOfDeathEnum.NaturalCauses, currentDate);
+        human.Life.Die(needs: human.Needs, cause: CauseOfDeathEnum.NaturalCauses, dateOfDeath: currentDate);
+
+        Human? partner = world.Humans.FirstOrDefault(x => x.Relationships.PartnerId == human.Id);
+
+        partner?.Needs.IncreaseHappiness(-25);
 
         return true;
     }

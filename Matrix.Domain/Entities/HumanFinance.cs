@@ -55,10 +55,10 @@ public sealed class HumanFinance()
 
         Money -= amount;
 
-        if (Money < 0)
-        {
-            Money = 0;
-        }
+        //if (Money < 0)
+        //{
+        //    Money = 0;
+        //}
 
         UpdateFinancialStatus(life);
     }

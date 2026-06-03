@@ -17,10 +17,11 @@ World world = WorldFactory.Create(settings, initialYear: DateOnly.MinValue);
 SimulationFactory.Run(
     settings,
     world,
+    isFinalReport: false,
     yearReport: WorldYearConsoleReport.Print
 );
 
 // Output final;
-WorldConsoleReport.Print(world);
+WorldConsoleReport.Print(settings, world);
 
 Console.ReadKey();
