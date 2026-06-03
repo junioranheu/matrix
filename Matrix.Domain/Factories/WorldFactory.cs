@@ -1,5 +1,6 @@
 ﻿using Matrix.Domain.Entities;
 using Matrix.Domain.Enums;
+using Matrix.Domain.Helpers;
 
 namespace Matrix.Domain.Factories;
 
@@ -7,8 +8,9 @@ public sealed class WorldFactory()
 {
     public static World Create()
     {
-        World world = new(name: "Matrix");
+        World world = new(name: "Matrix aaaaaaaaaaaaaaaaa");
 
+        var aea = SimulationHelper.GenerateRandomName();
         Human man = HumanFactory.CreateInitialHuman(firstName: "Adão", lastName: "de Souza", country: CountryEnum.Brazil);
         world.AddHuman(man);
 

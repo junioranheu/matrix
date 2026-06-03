@@ -1,4 +1,8 @@
-﻿namespace Matrix.Domain.Helpers;
+﻿using Matrix.Domain.Enums;
+using Matrix.Domain.Mappers;
+using static Matrix.Domain.Seeds.HumanNamesSeed;
+
+namespace Matrix.Domain.Helpers;
 
 /// <summary>
 /// Utilitários para cálculos, probabilidades, genética e geração de valores da simulação.
@@ -6,6 +10,38 @@
 public static class SimulationHelper
 {
     private static readonly Random Random = new();
+
+    /// <summary>
+    /// Gera um nome e sobrenome aleatórios compatíveis com o país e gênero informados.
+    /// </summary>
+    /// <param name="country">
+    /// País utilizado para determinar a categoria de nomes e sobrenomes disponível.
+    /// </param>
+    /// <param name="gender">
+    /// Gênero utilizado para selecionar o conjunto de primeiros nomes.
+    /// </param>
+    /// <returns>
+    /// Uma tupla contendo o nome e sobrenome gerados aleatoriamente.
+    /// </returns>
+    public static (string FirstName, string LastName) GenerateRandomName(CountryEnum country, GenderEnum gender)
+    {
+        HumanNameNationality nationality = HumanNameNationalityMapper.MapFrom(country);
+
+        HumanNamePool pool = HumanNames.Pools[nationality];
+
+        string[] names = gender switch
+        {
+            GenderEnum.Male => pool.MaleNames,
+            GenderEnum.Female => pool.FemaleNames,
+            _ => throw new ArgumentOutOfRangeException(nameof(gender))
+        };
+
+        string firstName = names[Random.Shared.Next(names.Length)];
+
+        string lastName = pool.LastNames[Random.Shared.Next(pool.LastNames.Length)];
+
+        return (firstName, lastName);
+    }
 
     /// <summary>
     /// Gera um atributo herdado dos pais aplicando uma mutação aleatória.

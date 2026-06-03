@@ -9,6 +9,11 @@ World world = WorldFactory.Create();
 
 ConsoleConfigurationHelpers.SetTitle(suffix: $"Mundo {world.Name}");
 
+for (int i = 0; i < 10; i++)
+{
+    ConsoleConfigurationHelpers.SetTitle(suffix: $"Mundo {world.Name} | Ano {world.CurrentYear}");
+}
+
 WorldConsoleReport.Print(world);
 
 Console.ReadKey();
