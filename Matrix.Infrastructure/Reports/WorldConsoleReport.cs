@@ -7,7 +7,12 @@ public static class WorldConsoleReport
 {
     public static void Print(World world)
     {
+        AnsiConsole.WriteLine();
+        AnsiConsole.Write(new Rule("[cyan]Resultado final[/]").RuleStyle("grey"));
+        AnsiConsole.WriteLine();
+
         PrintWorldSummary(world);
+
         PrintHumans(world);
     }
 
@@ -44,8 +49,8 @@ public static class WorldConsoleReport
         table.AddColumn("Nome");
         table.AddColumn("Idade");
         table.AddColumn("Status");
+        table.AddColumn("País de origem");
         table.AddColumn("Saúde");
-        table.AddColumn("País");
         table.AddColumn("Filhos");
         table.AddColumn("Doenças");
 
@@ -55,9 +60,9 @@ public static class WorldConsoleReport
                 human.Identity.BirthDate.ToString(),
                 human.Identity.FullName,
                 human.Life.Age.ToString(),
-                human.Life.IsAlive ? "[green]Vivo[/]" : "[red]Morto[/]",
+                human.Life.IsAlive ? "[cyan]Vivo[/]" : "[red]Morto[/]",
+               human.Location.BirthCountry.ToString(),
                 human.Health.Health.ToString(),
-                human.Location.BirthCountry.ToString(),
                 human.Family.ChildrenIds.Count.ToString(),
                 human.Health.Diseases.Count.ToString()
             );

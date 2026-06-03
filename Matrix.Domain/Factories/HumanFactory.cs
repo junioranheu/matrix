@@ -15,13 +15,13 @@ public sealed class HumanFactory
     /// <summary>
     /// Cria um humano inicial sem pai ou mãe definidos.
     /// </summary>
-    public static Human CreateInitialHuman(string firstName, string lastName, CountryEnum country)
+    public static Human CreateInitialHuman(string firstName, string lastName, CountryEnum country, DateOnly currentYear)
     {
         return new Human(
             identity: new HumanIdentity(
                 firstName,
                 lastName,
-                DateOnly.FromDateTime(DateTime.UtcNow)),
+                birthDate: currentYear),
 
             family: new HumanFamily(
                 fatherId: null,
@@ -46,13 +46,13 @@ public sealed class HumanFactory
     /// <summary>
     /// Cria um filho herdando características dos pais.
     /// </summary>
-    public static Human CreateChild(Human father, Human mother, string firstName)
+    public static Human CreateChild(Human father, Human mother, string firstName, DateOnly currentYear)
     {
         return new Human(
             identity: new HumanIdentity(
                 firstName,
                 father.Identity.LastName,
-                DateOnly.FromDateTime(DateTime.UtcNow)),
+                birthDate: currentYear),
 
             family: new HumanFamily(
                 fatherId: father.Id,
