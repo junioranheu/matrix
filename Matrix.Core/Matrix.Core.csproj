@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Matrix.Domain\Matrix.Domain.csproj" />
+    <ProjectReference Include="..\Matrix.Infrastructure\Matrix.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

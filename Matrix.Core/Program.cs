@@ -1,8 +1,14 @@
 ﻿using Matrix.Domain.Entities;
 using Matrix.Domain.Factories;
+using Matrix.Infrastructure.Reports;
+using Matrix.Shared.Helpers;
 
-Console.Title = "Bem-vindo à Matrix.";
+ConsoleConfigurationHelpers.Configure();
 
-World _ = WorldFactory.Create();
+World world = WorldFactory.Create();
+
+ConsoleConfigurationHelpers.SetTitle(suffix: $"Mundo {world.Name}");
+
+WorldConsoleReport.Print(world);
 
 Console.ReadKey();
