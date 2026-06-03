@@ -3,7 +3,6 @@ using Matrix.Domain.Enums;
 using Matrix.Domain.Helpers;
 using Matrix.Shared.Extensions;
 using Matrix.Shared.Helpers;
-using System;
 
 namespace Matrix.Domain.Factories;
 
@@ -16,21 +15,33 @@ public sealed class WorldFactory()
     private const int MIN_AGE = 18;
     private const int MAX_AGE = 30;
 
+    /// <summary>
+    /// Cria o mundo inicial da simulação, gerando os países e os casais fundadores.
+    /// </summary>
+    /// <param name="settings">Configurações iniciais da simulação.</param>
+    /// <param name="initialYear">Data inicial da simulação.</param>
+    /// <returns>Instância do mundo populada com os primeiros habitantes.</returns>
     public static World Create(InitialSettings settings, DateOnly initialYear)
     {
-        // Cria o mundo;
+        // Cria o planeta que será utilizado durante toda a simulação;
         World world = new(name: SimulationHelper.GeneratePlanetName(), initialYear);
 
-        for (int i = 0; i < settings.StartingCouples; i++)
+        // Cria a quantidade configurada de países;
+        for (int i = 0; i < settings.AmountOfCountries; i++)
         {
-            // Obtém aleatoriamente um país de origem;
+            // Define aleatoriamente o país que servirá como origem dos habitantes;
             CountryEnum startingCountry = EnumExtensions.GetRandom<CountryEnum>();
 
-            Human man = CreateMan(world, gender: GenderEnum.Male, startingCountry, currentDate: initialYear);
+            // Cria os casais fundadores do país;
+            for (int j = 0; j < settings.StartingCouplesByCountry; j++)
+            {
+                Human man = CreateMan(world, gender: GenderEnum.Male, startingCountry, currentDate: initialYear);
 
-            Human woman = CreateWoman(world, gender: GenderEnum.Female, startingCountry, currentDate: initialYear, man);
+                Human woman = CreateWoman(world, gender: GenderEnum.Female, startingCountry, currentDate: initialYear, man);
 
-            Marry(man, woman);
+                // Oficializa o casamento do casal fundador;
+                Marry(man, woman);
+            }
         }
 
         return world;
