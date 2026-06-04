@@ -52,6 +52,14 @@ public sealed class SimulationFactory
 
     #region methods
     /// <summary>
+    /// Executa as ações de preparação do ano atual.
+    /// </summary>
+    private static void StartYear(World world)
+    {
+        ConsoleConfigurationHelpers.SetTitle(world.Name, world.CurrentYear);
+    }
+
+    /// <summary>
     /// Verifica se ainda existe ao menos um humano vivo no mundo.
     /// </summary>
     /// <param name="world">
@@ -104,11 +112,119 @@ public sealed class SimulationFactory
     }
 
     /// <summary>
-    /// Executa as ações de preparação do ano atual.
+    /// Armazena todos os pares de humanos que possuem
+    /// parentesco próximo e não podem se relacionar.
     /// </summary>
-    private static void StartYear(World world)
+    private static HashSet<(Guid first, Guid second)> BuildCloseRelativesCache(World world)
     {
-        ConsoleConfigurationHelpers.SetTitle(world.Name, world.CurrentYear);
+        HashSet<(Guid, Guid)> cache = [];
+
+        foreach (Human human in world.Humans)
+        {
+            AddParentRelationships(cache, human);
+        }
+
+        AddSiblingRelationships(world, cache);
+
+        return cache;
+    }
+
+    /// <summary>
+    /// Registra uma relação de parentesco nos dois sentidos.
+    /// Exemplo:
+    /// João -> Maria
+    /// Maria -> João
+    /// </summary>
+    private static void AddRelationship(HashSet<(Guid first, Guid second)> cache, Guid first, Guid second)
+    {
+        cache.Add((first, second));
+        cache.Add((second, first));
+    }
+
+    /// <summary>
+    /// Registra relações entre pais e filhos.
+    /// </summary>
+    private static void AddParentRelationships(HashSet<(Guid first, Guid second)> cache, Human child)
+    {
+        if (child.Family.FatherId is not null)
+        {
+            AddRelationship(cache, first: child.Id, second: child.Family.FatherId.Value);
+        }
+
+        if (child.Family.MotherId is not null)
+        {
+            AddRelationship(cache, first: child.Id, second: child.Family.MotherId.Value);
+        }
+    }
+
+    /// <summary>
+    /// Registra relações entre irmãos e meio-irmãos.
+    /// Humanos que compartilham pai ou mãe são adicionados
+    /// ao cache de parentes próximos.
+    /// </summary>
+    private static void AddSiblingRelationships(World world, HashSet<(Guid first, Guid second)> cache)
+    {
+        // Agrupa os humanos por combinação de pai e mãe.
+        // Todos os membros de um mesmo grupo são irmãos ou meio-irmãos.
+        Dictionary<(Guid? FatherId, Guid? MotherId), List<Human>> families = [];
+
+        foreach (Human human in world.Humans)
+        {
+            // Humanos sem pai e mãe conhecidos não podem
+            // ser agrupados como irmãos.
+            //
+            // Além de evitar falsos positivos, isso impede
+            // a criação de uma família gigantesca contendo
+            // todos os humanos iniciais da simulação.
+            if (human.Family.FatherId is null && human.Family.MotherId is null)
+            {
+                continue;
+            }
+
+            // Utiliza a combinação de pai e mãe como chave
+            // para identificar uma família.
+            (Guid?, Guid?) key = (human.Family.FatherId, human.Family.MotherId);
+
+            // Caso a família ainda não exista no dicionário,
+            // cria uma nova lista para armazenar seus membros.
+            if (!families.TryGetValue(key, out List<Human>? family))
+            {
+                family = [];
+
+                families[key] = family;
+            }
+
+            // Adiciona o humano à sua respectiva família.
+            family.Add(human);
+        }
+
+        // Percorre cada família encontrada.
+        foreach (List<Human> family in families.Values)
+        {
+            // Famílias com apenas um membro não possuem
+            // irmãos para relacionar.
+            if (family.Count < 2)
+            {
+                continue;
+            }
+
+            // Percorre todos os membros da família.
+            for (int i = 0; i < family.Count; i++)
+            {
+                Human first = family[i];
+
+                // Compara o membro atual apenas com os
+                // membros seguintes, evitando duplicidades.
+                for (int j = i + 1; j < family.Count; j++)
+                {
+                    Human second = family[j];
+
+                    // Registra a relação de irmandade entre
+                    // os dois humanos no cache.
+                    AddRelationship(cache, first: first.Id, second: second.Id);
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -118,6 +234,8 @@ public sealed class SimulationFactory
     /// </summary>
     private static void ProcessPopulation(World world)
     {
+        HashSet<(Guid first, Guid second)> closeRelatives = BuildCloseRelativesCache(world);
+
         List<Human> humans = [.. world.Humans.Where(x => x.Life.IsAlive)];
 
         DateOnly currentDate = world.CurrentDate;
@@ -126,9 +244,9 @@ public sealed class SimulationFactory
         {
             ProcessHumanYear(human, currentDate);
 
-            TryCreateRelationship(world, human);
+            TryCreateRelationship(world, human, closeRelatives);
 
-            TryFindLover(world, human);
+            TryFindLover(world, human, closeRelatives);
 
             TryDivorce(world, human);
 
@@ -144,7 +262,7 @@ public sealed class SimulationFactory
 
             TryAccident(human, currentDate);
 
-            TryProcreate(world, human, currentDate);
+            TryProcreate(world, human, currentDate, closeRelatives);
 
             TryNaturalDeath(world, human, currentDate);
 
@@ -169,7 +287,7 @@ public sealed class SimulationFactory
     /// Tenta criar um relacionamento estável entre dois
     /// habitantes solteiros e compatíveis.
     /// </summary>
-    private static void TryCreateRelationship(World world, Human human)
+    private static void TryCreateRelationship(World world, Human human, HashSet<(Guid first, Guid second)> closeRelatives)
     {
         // Apenas pessoas vivas podem iniciar relacionamentos;
         if (!human.Life.IsAlive)
@@ -210,7 +328,7 @@ public sealed class SimulationFactory
                 x.Relationships.PartnerId is null &&
                 x.Identity.Gender != human.Identity.Gender &&
                 Math.Abs(x.Life.Age - human.Life.Age) <= 25 &&
-                !AreCloseRelatives(world, human, x)
+                !closeRelatives.Contains((human.Id, x.Id))
             )
         ];
 
@@ -231,7 +349,7 @@ public sealed class SimulationFactory
     /// <summary>
     /// Tenta criar um relacionamento extraconjugal.
     /// </summary>
-    private static void TryFindLover(World world, Human human)
+    private static void TryFindLover(World world, Human human, HashSet<(Guid first, Guid second)> closeRelatives)
     {
         if (human.Relationships.PartnerId is null)
         {
@@ -249,7 +367,7 @@ public sealed class SimulationFactory
                 x.Id != human.Id &&
                 x.Life.IsAlive &&
                 x.Identity.Gender != human.Identity.Gender &&
-                !AreCloseRelatives(world, human, x)
+                !closeRelatives.Contains((human.Id, x.Id))
             )
         ];
 
@@ -295,22 +413,35 @@ public sealed class SimulationFactory
     /// <summary>
     /// Obtém o parceiro mais provável para reprodução.
     /// </summary>
-    private static Human? GetReproductionPartner(World world, Human human)
+    private static Human? GetReproductionPartner(World world, Human human, HashSet<(Guid first, Guid second)> closeRelatives)
     {
+        // Primeiro tenta utilizar o parceiro oficial do relacionamento;
         if (human.Relationships.PartnerId is not null)
         {
             Human? partner = world.Humans.FirstOrDefault(x => x.Id == human.Relationships.PartnerId);
 
-            if (CanReproduceWith(world, human, partner))
+            // O parceiro precisa atender todas as regras
+            // de reprodução (idade, sexo, parentesco etc);
+            if (CanReproduceWith(human, partner, closeRelatives))
             {
                 return partner;
             }
         }
 
+        // Caso não consiga reproduzir com o parceiro oficial,
+        // tenta utilizar algum amante válido;
         if (human.Relationships.LoversIds.Count > 0)
         {
-            List<Human> validLovers = [.. world.Humans.Where(x => human.Relationships.LoversIds.Contains(x.Id)).Where(x => CanReproduceWith(world, human, x))];
+            // Filtra apenas amantes que podem reproduzir;
+            List<Human> validLovers =
+            [
+                ..world.Humans.Where(x =>
+                    human.Relationships.LoversIds.Contains(x.Id) &&
+                    CanReproduceWith(human, x, closeRelatives))
+            ];
 
+            // Se existir ao menos um amante válido,
+            // escolhe um aleatoriamente;
             if (validLovers.Count > 0)
             {
                 return validLovers[RandomHelpers.RandomBetween(0, validLovers.Count - 1)];
@@ -323,7 +454,7 @@ public sealed class SimulationFactory
     /// <summary>
     /// Tenta gerar um novo filho utilizando parceiro oficial ou amante.
     /// </summary>
-    private static bool TryProcreate(World world, Human human, DateOnly currentDate)
+    private static bool TryProcreate(World world, Human human, DateOnly currentDate, HashSet<(Guid first, Guid second)> closeRelatives)
     {
         // Verifica se o humano atende aos requisitos básicos para reprodução;
         if (!CanReproduce(human))
@@ -338,7 +469,7 @@ public sealed class SimulationFactory
         }
 
         // Obtém um parceiro elegível para reprodução;
-        Human? partner = GetReproductionPartner(world, human);
+        Human? partner = GetReproductionPartner(world, human, closeRelatives);
 
         // Não é possível reproduzir sem um parceiro;
         if (partner is null)
@@ -383,7 +514,7 @@ public sealed class SimulationFactory
     /// <summary>
     /// Valida se dois humanos podem reproduzir.
     /// </summary>
-    private static bool CanReproduceWith(World world, Human human, Human? candidate)
+    private static bool CanReproduceWith(Human human, Human? candidate, HashSet<(Guid first, Guid second)> closeRelatives)
     {
         // O parceiro precisa existir;
         if (candidate is null)
@@ -433,35 +564,12 @@ public sealed class SimulationFactory
         }
 
         // Impede qualquer parentesco próximo;
-        if (AreCloseRelatives(world, human, candidate))
+        if (closeRelatives.Contains((human.Id, candidate.Id)))
         {
             return false;
         }
 
         return true;
-    }
-
-    /// <summary>
-    /// Verifica se duas pessoas possuem parentesco próximo.
-    /// </summary>
-    private static bool AreCloseRelatives(World world, Human human, Human candidate)
-    {
-        return IsParentOf(human, candidate) ||
-            IsParentOf(candidate, human) ||
-            AreSiblings(human, candidate) ||
-            IsGrandparentOf(world, human, candidate) ||
-            IsGrandparentOf(world, candidate, human) ||
-            IsUncleOrAuntOf(world, human, candidate) ||
-            IsUncleOrAuntOf(world, candidate, human);
-    }
-
-    /// <summary>
-    /// Verifica se parent é pai ou mãe de child.
-    /// </summary>
-    private static bool IsParentOf(Human parent, Human child)
-    {
-        return child.Family.FatherId == parent.Id ||
-               child.Family.MotherId == parent.Id;
     }
 
     /// <summary>
@@ -486,64 +594,6 @@ public sealed class SimulationFactory
             firstMotherId == secondMotherId;
 
         return sameFather || sameMother;
-    }
-
-    /// <summary>
-    /// Verifica se grandparent é avô ou avó de grandchild.
-    /// </summary>
-    private static bool IsGrandparentOf(World world, Human grandparent, Human grandchild)
-    {
-        List<Guid> parentsIds =
-        [
-            grandchild.Family.FatherId ?? Guid.Empty,
-            grandchild.Family.MotherId ?? Guid.Empty
-        ];
-
-        foreach (Guid parentId in parentsIds.Where(x => x != Guid.Empty))
-        {
-            Human? parent = world.Humans.FirstOrDefault(x => x.Id == parentId);
-
-            if (parent is null)
-            {
-                continue;
-            }
-
-            if (IsParentOf(grandparent, parent))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// Verifica se uncle é tio ou tia de nephew.
-    /// </summary>
-    private static bool IsUncleOrAuntOf(World world, Human uncle, Human nephew)
-    {
-        List<Guid> parentsIds =
-        [
-            nephew.Family.FatherId ?? Guid.Empty,
-            nephew.Family.MotherId ?? Guid.Empty
-        ];
-
-        foreach (Guid parentId in parentsIds.Where(x => x != Guid.Empty))
-        {
-            Human? parent = world.Humans.FirstOrDefault(x => x.Id == parentId);
-
-            if (parent is null)
-            {
-                continue;
-            }
-
-            if (AreSiblings(uncle, parent))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /// <summary>
