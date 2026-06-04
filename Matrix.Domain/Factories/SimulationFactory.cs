@@ -82,10 +82,10 @@ public sealed class SimulationFactory
     {
         List<Human> humans = [.. world.Humans.Where(x => x.Life.IsAlive)];
 
+        DateOnly currentDate = world.CurrentDate;
+
         foreach (Human human in humans)
         {
-            DateOnly currentDate = world.CurrentDate;
-
             ProcessHumanYear(human, currentDate);
 
             TryCreateRelationship(world, human);
