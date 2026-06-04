@@ -109,6 +109,8 @@ public sealed class SimulationFactory
             TryProcreate(world, human, currentDate);
 
             TryNaturalDeath(world, human, currentDate);
+
+            TryToGetDepression(world, human, currentDate);
         }
     }
 
@@ -602,7 +604,7 @@ public sealed class SimulationFactory
 
         human.Finance.SpendMoney(life: human.Life, amount);
 
-        human.Needs.IncreaseHappiness(-10);
+        human.Needs.DecreaseHappiness(15);
     }
 
     /// <summary>
@@ -696,7 +698,38 @@ public sealed class SimulationFactory
 
         Human? partner = world.Humans.FirstOrDefault(x => x.Relationships.PartnerId == human.Id);
 
-        partner?.Needs.IncreaseHappiness(-25);
+        partner?.Needs.DecreaseHappiness(25);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Determina se o habitante obtém/morre por depressão.
+    /// </summary>
+    private static bool TryToGetDepression(World world, Human human, DateOnly currentDate)
+    {
+        if (!human.Life.IsAlive)
+        {
+            return false;
+        }
+
+        if (human.Needs.Happiness >= 15)
+        {
+            return false;
+        }
+
+        bool died = RandomHelpers.RandomBetween(1, 100) <= 5;
+
+        if (!died)
+        {
+            return false;
+        }
+
+        human.Life.Die(needs: human.Needs, cause: CauseOfDeathEnum.Depression, dateOfDeath: currentDate);
+
+        Human? partner = world.Humans.FirstOrDefault(x => x.Relationships.PartnerId == human.Id);
+
+        partner?.Needs.DecreaseHappiness(25);
 
         return true;
     }

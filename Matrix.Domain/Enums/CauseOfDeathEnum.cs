@@ -34,6 +34,9 @@ public enum CauseOfDeathEnum
     [Description("Morte causada por overdose de drogas")]
     DrugOverdose,
 
+    [Description("Morte causada por depressão")]
+    Depression,
+
     [Description("Causa da morte desconhecida")]
     Unknown
 }
