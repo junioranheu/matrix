@@ -84,7 +84,9 @@ public sealed class SimulationFactory
 
         foreach (Human human in humans)
         {
-            ProcessHumanYear(human, world.CurrentDate);
+            DateOnly currentDate = world.CurrentDate;
+
+            ProcessHumanYear(human, currentDate);
 
             TryCreateRelationship(world, human);
 
@@ -102,11 +104,11 @@ public sealed class SimulationFactory
 
             TryMoveCountry(human);
 
-            TryAccident(human, world.CurrentDate);
+            TryAccident(human, currentDate);
 
-            TryProcreate(world, human, world.CurrentDate);
+            TryProcreate(world, human, currentDate);
 
-            TryNaturalDeath(world, human, world.CurrentDate);
+            TryNaturalDeath(world, human, currentDate);
         }
     }
 
@@ -151,13 +153,14 @@ public sealed class SimulationFactory
 
         List<Human> candidates =
         [
-            .. world.Humans.Where(x =>
+            ..world.Humans.Where(x =>
                 x.Id != human.Id &&
                 x.Life.IsAlive &&
                 x.Relationships.PartnerId is null &&
                 x.Identity.Gender != human.Identity.Gender &&
                 Math.Abs(x.Life.Age - human.Life.Age) <= 15 &&
-                !AreCloseRelatives(world, human, x))
+                !AreCloseRelatives(world, human, x)
+            )
         ];
 
         if (candidates.Count == 0)
@@ -192,7 +195,8 @@ public sealed class SimulationFactory
                 x.Id != human.Id &&
                 x.Life.IsAlive &&
                 x.Identity.Gender != human.Identity.Gender &&
-                !AreCloseRelatives(world, human, x))
+                !AreCloseRelatives(world, human, x)
+            )
         ];
 
         if (candidates.Count == 0)
@@ -254,9 +258,7 @@ public sealed class SimulationFactory
 
             if (validLovers.Count > 0)
             {
-                return validLovers[
-                    RandomHelpers.RandomBetween(0, validLovers.Count - 1)
-                ];
+                return validLovers[RandomHelpers.RandomBetween(0, validLovers.Count - 1)];
             }
         }
 
