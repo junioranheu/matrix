@@ -99,7 +99,8 @@ public sealed class HumanLife(int age = 0)
         DateOfDeath = dateOfDeath;
         CauseOfDeath = cause;
 
-        AddLifeEvent($"Faleceu por {cause.GetDescription()}.");
+        // AddLifeEvent($"Faleceu por {cause.GetDescription()}.");
+        AddLifeEvent(cause.GetDescription());
     }
 
     /// <summary>

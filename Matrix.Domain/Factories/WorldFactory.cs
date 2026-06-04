@@ -100,21 +100,23 @@ public sealed class WorldFactory()
     /// Data atual da simulação utilizada para calcular a data de nascimento.
     /// </param>
     /// <param name="man">
-    /// Homem, que deverá ajudar a construir a mulher com sua costela -- não, pera. Apenas o sobrenome e a idade mesmo.
+    /// Homem, que deverá ajudar a construir a mulher com sua costela -- não, pera. Apenas o sobrenome mesmo.
     /// </param>
     private static Human CreateWoman(World world, GenderEnum gender, CountryEnum startingCountry, DateOnly currentDate, Human man)
     {
         (string womanFirstName, string _) = SimulationHelper.GenerateRandomName(country: startingCountry, gender);
+
+        int womanAge = RandomHelpers.RandomBetween(min: MIN_AGE, max: MAX_AGE);
 
         Human woman = HumanFactory.CreateInitialHuman(
             gender,
             firstName: womanFirstName,
             lastName: man.Identity.LastName,
             country: startingCountry,
-            age: man.Life.Age,
+            age: womanAge,
             currentDate);
 
-        world.AddHuman(human: woman, currentDate, country: startingCountry, isInitialSpawn: true, age: man.Life.Age);
+        world.AddHuman(human: woman, currentDate, country: startingCountry, isInitialSpawn: true, age: womanAge);
 
         return woman;
     }
