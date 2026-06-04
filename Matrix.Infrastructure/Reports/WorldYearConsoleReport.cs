@@ -252,7 +252,7 @@ public static class WorldYearConsoleReport
     /// </returns>
     private static int GetCountriesCount(IEnumerable<Human> humans)
     {
-        return humans.Select(x => x.Location.CurrentCountry).Distinct().Count();
+        return humans.SelectMany(x => new[] { x.Location.BirthCountry, x.Location.CurrentCountry }).Distinct().Count();
     }
 
     /// <summary>
