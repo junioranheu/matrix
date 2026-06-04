@@ -50,11 +50,15 @@ public sealed class World(string name, DateOnly initialYear)
 
         if (isInitialSpawn)
         {
-            human.Life.AddLifeEvent($"Magicamente spawnou no mundo com {age} anos, no ano de {currentDate:yyyy}, {country.GetDescription()}.");
+            human.Life.AddLifeEvent(
+                description: $"Milagrosamente apareceu no mundo, já com {age} anos. Local de nascimento: {country.GetDescription()}.",
+                currentDate);
         }
         else
         {
-            human.Life.AddLifeEvent($"Nasceu em {currentDate:yyyy}, {country.GetDescription()}.");
+            human.Life.AddLifeEvent(
+                description: $"Local de nascimento: {country.GetDescription()}.",
+                currentDate);
         }
     }
     #endregion

@@ -1,6 +1,7 @@
 ﻿using Matrix.Domain.Enums;
 using Matrix.Shared.Extensions;
 using Matrix.Shared.Helpers;
+using System.Diagnostics.Metrics;
 
 namespace Matrix.Domain.Entities;
 
@@ -86,7 +87,7 @@ public sealed class HumanLife(int age = 0)
             health.Damage(life: this, needs, amount: health.Diseases.Count, currentDate);
         }
 
-        AddLifeEvent($"Completou {Age} anos.");
+        AddLifeEvent(description: $"Completou {Age} anos.", currentDate);
     }
 
     /// <summary>
@@ -99,19 +100,21 @@ public sealed class HumanLife(int age = 0)
         DateOfDeath = dateOfDeath;
         CauseOfDeath = cause;
 
-        // AddLifeEvent($"Faleceu por {cause.GetDescription()}.");
-        AddLifeEvent(cause.GetDescription());
+        AddLifeEvent(description: cause.GetDescription(), currentDate: dateOfDeath);
     }
 
     /// <summary>
-    /// Adiciona um evento ao histórico.
+    /// Adiciona um evento ao histórico de um humano.
     /// </summary>
-    public void AddLifeEvent(string description)
+    public void AddLifeEvent(string description, DateOnly currentDate)
     {
         if (string.IsNullOrWhiteSpace(description))
         {
             return;
         }
+
+        description = description.Trim().TrimEnd('.');
+        description = $"{description}, no ano de {currentDate:yyyy}.";
 
         LifeEvents.Add(description);
     }

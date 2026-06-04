@@ -102,7 +102,7 @@ public sealed class SimulationFactory
 
             TryBecomePoor(human);
 
-            TryMoveCountry(human);
+            TryMoveCountry(human, currentDate);
 
             TryAccident(human, currentDate);
 
@@ -533,9 +533,9 @@ public sealed class SimulationFactory
 
         Human child = HumanFactory.CreateChild(gender, father, mother, firstName, currentDate);
 
-        father.Family.AddChild(life: father.Life, needs: father.Needs, childId: child.Id);
+        father.Family.AddChild(life: father.Life, needs: father.Needs, childId: child.Id, currentDate);
 
-        mother.Family.AddChild(life: mother.Life, needs: mother.Needs, childId: child.Id);
+        mother.Family.AddChild(life: mother.Life, needs: mother.Needs, childId: child.Id, currentDate);
 
         return child;
     }
@@ -625,7 +625,7 @@ public sealed class SimulationFactory
     /// Representa mudança de país por trabalho,
     /// relacionamento ou busca por melhores condições.
     /// </summary>
-    private static void TryMoveCountry(Human human)
+    private static void TryMoveCountry(Human human, DateOnly currentDate)
     {
         if (!human.Life.IsAlive)
         {
@@ -649,7 +649,7 @@ public sealed class SimulationFactory
             return;
         }
 
-        human.Location.MoveToCountry(life: human.Life, destination);
+        human.Location.MoveToCountry(life: human.Life, destination, currentDate);
 
         human.Needs.IncreaseHappiness(RandomHelpers.RandomBetween(-5, 20));
     }

@@ -27,7 +27,7 @@ public sealed class HumanFamily(Guid? fatherId, Guid? motherId)
     /// <summary>
     /// Adiciona um filho.
     /// </summary>
-    public void AddChild(HumanLife life, HumanNeeds needs, Guid childId)
+    public void AddChild(HumanLife life, HumanNeeds needs, Guid childId, DateOnly currentDate)
     {
         if (life.CannotAct())
         {
@@ -43,17 +43,17 @@ public sealed class HumanFamily(Guid? fatherId, Guid? motherId)
 
         needs.IncreaseHappiness(20);
 
-        life.AddLifeEvent("Teve um filho.");
+        life.AddLifeEvent(description: "Teve um filho.", currentDate);
     }
 
     /// <summary>
     /// Remove um filho.
     /// </summary>
-    public void RemoveChild(HumanLife life, Guid childId)
+    public void RemoveChild(HumanLife life, Guid childId, DateOnly currentDate)
     {
         ChildrenIds.Remove(childId);
 
-        life.AddLifeEvent("Perdeu um filho.");
+        life.AddLifeEvent(description: "Perdeu um filho.", currentDate);
     }
     #endregion
 }

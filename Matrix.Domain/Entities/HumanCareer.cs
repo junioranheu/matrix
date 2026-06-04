@@ -47,7 +47,7 @@ public sealed class HumanCareer()
     /// <summary>
     /// Inicia uma carreira.
     /// </summary>
-    public void SetJob(HumanLife life, JobTypeEnum jobType)
+    public void SetJob(HumanLife life, JobTypeEnum jobType, DateOnly currentDate)
     {
         if (life.CannotAct())
         {
@@ -62,7 +62,7 @@ public sealed class HumanCareer()
             CareerLevel = CareerLevelEnum.Junior;
         }
 
-        life.AddLifeEvent($"Começou a trabalhar como {jobType}.");
+        life.AddLifeEvent(description: $"Começou a trabalhar como {jobType}.", currentDate);
     }
 
     /// <summary>
@@ -89,14 +89,12 @@ public sealed class HumanCareer()
         needs.DecreaseEnergy(15);
 
         needs.IncreaseHunger(5);
-
-        life.AddLifeEvent($"Recebeu salário de {salary:C}.");
     }
 
     /// <summary>
     /// Recebe uma promoção.
     /// </summary>
-    public void Promote(HumanLife life, HumanNeeds needs)
+    public void Promote(HumanLife life, HumanNeeds needs, DateOnly currentDate)
     {
         if (life.CannotAct())
         {
@@ -119,13 +117,13 @@ public sealed class HumanCareer()
 
         needs.IncreaseHappiness(15);
 
-        life.AddLifeEvent($"Foi promovido para {CareerLevel}.");
+        life.AddLifeEvent(description: $"Foi promovido para {CareerLevel}.", currentDate);
     }
 
     /// <summary>
     /// É demitido.
     /// </summary>
-    public void Fire(HumanLife life, HumanNeeds needs, bool wantedToBeFired)
+    public void Fire(HumanLife life, HumanNeeds needs, bool wantedToBeFired, DateOnly currentDate)
     {
         if (life.CannotAct())
         {
@@ -146,13 +144,13 @@ public sealed class HumanCareer()
             needs.IncreaseStress(RandomHelpers.RandomBetween(25, 50));
         }
 
-        life.AddLifeEvent("Foi demitido.");
+        life.AddLifeEvent(description: "Foi demitido.", currentDate);
     }
 
     /// <summary>
     /// Pede demissão.
     /// </summary>
-    public void QuitJob(HumanLife life, HumanNeeds needs)
+    public void QuitJob(HumanLife life, HumanNeeds needs, DateOnly currentDate)
     {
         if (life.CannotAct())
         {
@@ -164,7 +162,7 @@ public sealed class HumanCareer()
 
         needs.IncreaseStress(5);
 
-        life.AddLifeEvent("Pediu demissão.");
+        life.AddLifeEvent(description: "Pediu demissão.", currentDate);
     }
 
     /// <summary>
@@ -248,7 +246,7 @@ public sealed class HumanCareer()
     /// <summary>
     /// Aposenta-se.
     /// </summary>
-    public void Retire(HumanLife life, HumanNeeds needs)
+    public void Retire(HumanLife life, HumanNeeds needs, DateOnly currentDate)
     {
         if (life.CannotAct())
         {
@@ -262,7 +260,7 @@ public sealed class HumanCareer()
 
         needs.DecreaseStress(20);
 
-        life.AddLifeEvent("Aposentou-se.");
+        life.AddLifeEvent(description: "Aposentou-se.", currentDate);
     }
     #endregion
 }

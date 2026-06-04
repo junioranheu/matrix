@@ -30,8 +30,6 @@ public sealed class HumanEducation()
         needs.DecreaseEnergy(hours / 2);
 
         needs.IncreaseStress(hours / 2);
-
-        life.AddLifeEvent($"Estudou por {hours} horas.");
     }
 
     /// <summary>
@@ -50,7 +48,7 @@ public sealed class HumanEducation()
     /// <summary>
     /// Conclui um nível educacional.
     /// </summary>
-    public void Graduate(HumanLife life, HumanNeeds needs)
+    public void Graduate(HumanLife life, HumanNeeds needs, DateOnly currentDate)
     {
         if (life.CannotAct())
         {
@@ -63,7 +61,7 @@ public sealed class HumanEducation()
 
         IncreaseKnowledge(life, 10);
 
-        life.AddLifeEvent("Concluiu uma formação.");
+        life.AddLifeEvent(description: "Concluiu uma formação.", currentDate);
     }
     #endregion
 }

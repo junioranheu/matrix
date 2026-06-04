@@ -45,7 +45,7 @@ public sealed class HumanRelationships()
     /// <summary>
     /// Casa-se com outro humano.
     /// </summary>
-    public void Marry(HumanLife life, HumanNeeds needs, HumanEmotions emotions, Guid partnerId)
+    public void Marry(HumanLife life, HumanNeeds needs, HumanEmotions emotions, Guid partnerId, DateOnly currentDate)
     {
         if (life.CannotAct())
         {
@@ -63,13 +63,13 @@ public sealed class HumanRelationships()
 
         emotions.ChangeMood(MoodEnum.Happy);
 
-        life.AddLifeEvent("Casou-se.");
+        life.AddLifeEvent(description: "Casou-se.", currentDate);
     }
 
     /// <summary>
     /// Realiza um divórcio.
     /// </summary>
-    public void Divorce(HumanLife life, HumanNeeds needs, HumanEmotions emotions)
+    public void Divorce(HumanLife life, HumanNeeds needs, HumanEmotions emotions, DateOnly currentDate)
     {
         if (life.CannotAct())
         {
@@ -89,7 +89,7 @@ public sealed class HumanRelationships()
 
         emotions.ChangeMood(MoodEnum.Heartbroken);
 
-        life.AddLifeEvent("Divorciou-se.");
+        life.AddLifeEvent(description: "Divorciou-se.", currentDate);
     }
 
     /// <summary>

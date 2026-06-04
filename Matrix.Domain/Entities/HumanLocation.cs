@@ -31,7 +31,7 @@ public sealed class HumanLocation(CountryEnum birthCountry)
     /// <summary>
     /// Muda o país de residência.
     /// </summary>
-    public void MoveToCountry(HumanLife life, CountryEnum country)
+    public void MoveToCountry(HumanLife life, CountryEnum country, DateOnly currentDate)
     {
         if (life.CannotAct())
         {
@@ -40,7 +40,7 @@ public sealed class HumanLocation(CountryEnum birthCountry)
 
         CurrentCountry = country;
 
-        life.AddLifeEvent($"Mudou-se para {country}.");
+        life.AddLifeEvent(description: $"Mudou-se para {country}.", currentDate);
     }
     #endregion
 }

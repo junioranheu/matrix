@@ -1,4 +1,5 @@
 ﻿using Matrix.Domain.Enums;
+using Matrix.Shared.Extensions;
 using Matrix.Shared.Helpers;
 using static Matrix.Shared.Helpers.NumericHelpers;
 
@@ -79,8 +80,6 @@ public sealed class HumanHealth(int health, int immunity, int fertility, List<Di
         needs.DecreaseStress(hours * 2);
 
         needs.IncreaseHunger(hours);
-
-        life.AddLifeEvent($"Dormiu por {hours} horas.");
     }
 
     /// <summary>
@@ -103,7 +102,7 @@ public sealed class HumanHealth(int health, int immunity, int fertility, List<Di
     /// <summary>
     /// Realiza atividade física.
     /// </summary>
-    public static void Exercise(HumanLife life, HumanNeeds needs, int hours)
+    public static void Exercise(HumanLife life, HumanNeeds needs, int hours, DateOnly currentDate)
     {
         if (life.CannotAct() || hours <= 0)
         {
@@ -118,7 +117,7 @@ public sealed class HumanHealth(int health, int immunity, int fertility, List<Di
 
         needs.IncreaseStress(hours);
 
-        life.AddLifeEvent($"Praticou exercícios por {hours} horas.");
+        life.AddLifeEvent(description: $"Praticou exercícios por {hours} horas.", currentDate);
     }
 
     /// <summary>
@@ -165,13 +164,13 @@ public sealed class HumanHealth(int health, int immunity, int fertility, List<Di
 
         emotions.ChangeMood(MoodEnum.Sad);
 
-        life.AddLifeEvent($"Contraiu {disease}.");
+        life.AddLifeEvent(description: $"Contraiu {disease.GetDescription()}.", currentDate);
     }
 
     /// <summary>
     /// Cura uma doença.
     /// </summary>
-    public void CureDisease(HumanLife life, HumanNeeds needs, HumanHealth health, DiseaseEnum disease)
+    public void CureDisease(HumanLife life, HumanNeeds needs, HumanHealth health, DiseaseEnum disease, DateOnly currentDate)
     {
         if (!Diseases.Contains(disease))
         {
@@ -184,7 +183,7 @@ public sealed class HumanHealth(int health, int immunity, int fertility, List<Di
 
         needs.IncreaseHappiness(5);
 
-        life.AddLifeEvent($"Curou-se de {disease}.");
+        life.AddLifeEvent(description: $"Curou-se de {disease.GetDescription()}.", currentDate);
     }
     #endregion
 }

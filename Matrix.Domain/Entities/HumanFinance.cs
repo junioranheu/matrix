@@ -66,7 +66,7 @@ public sealed class HumanFinance()
     /// <summary>
     /// Obtém um empréstimo.
     /// </summary>
-    public void TakeLoan(HumanLife life, decimal amount)
+    public void TakeLoan(HumanLife life, decimal amount, DateOnly currentDate)
     {
         if (life.CannotAct() || amount <= 0)
         {
@@ -76,7 +76,7 @@ public sealed class HumanFinance()
         Debt += amount;
         Money += amount;
 
-        life.AddLifeEvent($"Pegou um empréstimo de {amount:C}.");
+        life.AddLifeEvent(description: $"Pegou um empréstimo de {amount:C}.", currentDate);
     }
 
     /// <summary>
@@ -115,7 +115,7 @@ public sealed class HumanFinance()
     /// <summary>
     /// Doa dinheiro.
     /// </summary>
-    public void Donate(HumanLife life, HumanNeeds needs, decimal amount)
+    public void Donate(HumanLife life, HumanNeeds needs, decimal amount, DateOnly currentDate)
     {
         if (life.CannotAct() || amount <= 0)
         {
@@ -131,13 +131,13 @@ public sealed class HumanFinance()
 
         needs.IncreaseHappiness(5);
 
-        life.AddLifeEvent($"Doou {amount:C}.");
+        life.AddLifeEvent(description: $"Doou {amount:C}.", currentDate);
     }
 
     /// <summary>
     /// Recebe herança.
     /// </summary>
-    public void ReceiveInheritance(HumanLife life, HumanNeeds needs, decimal amount)
+    public void ReceiveInheritance(HumanLife life, HumanNeeds needs, decimal amount, DateOnly currentDate)
     {
         if (life.CannotAct() || amount <= 0)
         {
@@ -148,7 +148,7 @@ public sealed class HumanFinance()
 
         needs.IncreaseHappiness(10);
 
-        life.AddLifeEvent($"Recebeu uma herança de {amount:C}.");
+        life.AddLifeEvent(description: $"Recebeu uma herança de {amount:C}.", currentDate);
     }
 
     /// <summary>
