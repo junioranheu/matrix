@@ -40,7 +40,7 @@ public sealed class HumanLocation(CountryEnum birthCountry)
 
         CurrentCountry = country;
 
-        life.AddLifeEvent(description: $"Mudou-se para {country}.", currentDate);
+        life.AddLifeEvent(description: $"Mudou-se para {country.GetDescription()}.", currentDate);
     }
     #endregion
 }
