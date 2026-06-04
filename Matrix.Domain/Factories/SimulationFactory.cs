@@ -16,9 +16,9 @@ public sealed class SimulationFactory
     private const int MIN_REPRODUCTION_AGE = 15;
     private const int MAX_REPRODUCTION_AGE = 50;
 
-    private const int REPRODUCTION_CHANCE_AGE_MIN_TO_25 = 18;
-    private const int REPRODUCTION_CHANCE_AGE_MIN_TO_26_TO_35 = 12;
-    private const int REPRODUCTION_CHANCE_AGE_36_TO_MAX = 5;
+    private const int REPRODUCTION_CHANCE_AGE_MIN_TO_25 = 25;
+    private const int REPRODUCTION_CHANCE_AGE_MIN_TO_26_TO_35 = 20;
+    private const int REPRODUCTION_CHANCE_AGE_36_TO_MAX = 10;
 
     private const int NATURAL_DEATH_AGE_70 = 10;
     private const int NATURAL_DEATH_AGE_80 = 30;
@@ -62,7 +62,45 @@ public sealed class SimulationFactory
     /// </returns>
     private static bool HasAliveHumans(World world)
     {
-        return world.Humans.Any(x => x.Life.IsAlive);
+        int alive = world.Humans.Count(x => x.Life.IsAlive);
+
+        if (alive <= 50)
+        {
+            PrintExtinctionDiagnostics(world);
+        }
+
+        return alive > 0;
+    }
+
+    /// <summary>
+    /// Exibe um relatório de diagnóstico quando a civilização
+    /// está próxima da extinção, permitindo identificar possíveis
+    /// causas para o colapso populacional, como envelhecimento,
+    /// falta de casais férteis ou desequilíbrio entre nascimentos e mortes.
+    /// </summary>
+    private static void PrintExtinctionDiagnostics(World world)
+    {
+        List<Human> alive = [.. world.Humans.Where(x => x.Life.IsAlive)];
+
+        ConsoleColor originalColor = Console.ForegroundColor;
+        Console.ForegroundColor = ConsoleColor.Red;
+
+        Console.WriteLine($"População: {alive.Count}");
+
+        Console.WriteLine($"Homens: {alive.Count(x => x.Identity.Gender == GenderEnum.Male)}");
+        Console.WriteLine($"Mulheres: {alive.Count(x => x.Identity.Gender == GenderEnum.Female)}");
+
+        Console.WriteLine($"0-17: {alive.Count(x => x.Life.Age <= 17)}");
+        Console.WriteLine($"18-30: {alive.Count(x => x.Life.Age >= 18 && x.Life.Age <= 30)}");
+        Console.WriteLine($"31-45: {alive.Count(x => x.Life.Age >= 31 && x.Life.Age <= 45)}");
+        Console.WriteLine($"46-60: {alive.Count(x => x.Life.Age >= 46 && x.Life.Age <= 60)}");
+        Console.WriteLine($"61+: {alive.Count(x => x.Life.Age >= 61)}");
+
+        Console.WriteLine($"Mulheres férteis: {alive.Count(x => x.Identity.Gender == GenderEnum.Female && x.Life.Age >= 18 && x.Life.Age <= 45)}");
+
+        Console.WriteLine($"Casados: {alive.Count(x => x.Relationships.PartnerId != null)}");
+
+        Console.ForegroundColor = originalColor;
     }
 
     /// <summary>

@@ -42,8 +42,8 @@ public sealed class InitialSettings
             AnsiConsole.Write(new Rule("[cyan]Modo debug ativado[/]").RuleStyle("grey"));
 
             SimulationYears = DateTime.UtcNow.Year;
-            AmountOfCountries = 10;
-            StartingCouplesByCountry = 4;
+            AmountOfCountries = 22;
+            StartingCouplesByCountry = 50;
             ShowEvents = true;
         }
         else
