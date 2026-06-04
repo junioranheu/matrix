@@ -272,43 +272,58 @@ public sealed class SimulationFactory
     /// </summary>
     private static bool TryProcreate(World world, Human human, DateOnly currentDate)
     {
+        // Verifica se o humano atende aos requisitos básicos para reprodução;
         if (!CanReproduce(human))
         {
             return false;
         }
 
+        // Apenas mulheres podem engravidar e dar origem ao recém-nascido;
         if (human.Identity.Gender != GenderEnum.Female)
         {
             return false;
         }
 
+        // Obtém um parceiro elegível para reprodução;
         Human? partner = GetReproductionPartner(world, human);
 
+        // Não é possível reproduzir sem um parceiro;
         if (partner is null)
         {
             return false;
         }
 
+        // Obtém a chance base de reprodução de acordo com a idade;
         int chance = GetReproductionChance(human.Life.Age);
 
+        // Ajusta a chance conforme a quantidade de filhos já existentes;
         chance += GetChildrenModifier(human);
 
+        // Caso a chance final seja nula ou negativa, cancela a tentativa;
         if (chance <= 0)
         {
             return false;
         }
 
-        bool hasChild = RandomHelpers.RandomBetween(1, 100) <= chance;
+        // Realiza um sorteio percentual entre 1 e 100;
+        int reproductionRoll = RandomHelpers.RandomBetween(1, 100);
 
-        if (!hasChild)
+        // Determina se a reprodução foi bem-sucedida;
+        bool reproductionSucceeded = reproductionRoll <= chance;
+
+        // Se o sorteio falhou, não haverá nascimento;
+        if (!reproductionSucceeded)
         {
             return false;
         }
 
+        // Cria o recém-nascido utilizando o parceiro como pai e a humana como mãe;
         Human newborn = CreateNewborn(father: partner, mother: human, currentDate);
 
-        world.Humans.Add(newborn);
+        // Adiciona o novo humano à população mundial;
+        world.AddHuman(human: newborn, currentDate, country: newborn.Location.BirthCountry, isInitialSpawn: false, age: 0);
 
+        // Informa que houve reprodução com sucesso;
         return true;
     }
 
@@ -521,8 +536,6 @@ public sealed class SimulationFactory
         father.Family.AddChild(life: father.Life, needs: father.Needs, childId: child.Id);
 
         mother.Family.AddChild(life: mother.Life, needs: mother.Needs, childId: child.Id);
-
-        child.Life.AddLifeEvent($"Nasceu em {currentDate:yyyy}, {mother.Location.CurrentCountry.GetDescription()}.");
 
         return child;
     }
