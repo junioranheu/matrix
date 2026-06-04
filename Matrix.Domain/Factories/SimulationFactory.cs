@@ -92,7 +92,7 @@ public sealed class SimulationFactory
 
             TryFindLover(world, human);
 
-            TryBreakRelationship(world, human);
+            TryDivorce(world, human);
 
             TryGainHappiness(human);
 
@@ -128,31 +128,42 @@ public sealed class SimulationFactory
     }
 
     /// <summary>
-    /// Tenta criar um relacionamento estável
-    /// entre dois habitantes solteiros.
+    /// Tenta criar um relacionamento estável entre dois
+    /// habitantes solteiros e compatíveis.
     /// </summary>
     private static void TryCreateRelationship(World world, Human human)
     {
+        // Apenas pessoas vivas podem iniciar relacionamentos;
         if (!human.Life.IsAlive)
         {
             return;
         }
 
+        // Ignora quem já possui parceiro;
         if (human.Relationships.PartnerId is not null)
         {
             return;
         }
 
+        // Impede relacionamentos antes da maioridade;
         if (human.Life.Age < 18)
         {
             return;
         }
 
-        if (RandomHelpers.RandomBetween(1, 100) > 3)
+        // Chance anual de encontrar um parceiro.
+        if (RandomHelpers.RandomBetween(1, 100) > 25)
         {
             return;
         }
 
+        // Procura possíveis parceiros compatíveis:
+        // - não pode ser a própria pessoa;
+        // - precisa estar vivo;
+        // - precisa estar solteiro;
+        // - deve ser do sexo oposto;
+        // - diferença máxima de idade de X anos;
+        // - não pode possuir parentesco próximo.
         List<Human> candidates =
         [
             ..world.Humans.Where(x =>
@@ -160,18 +171,21 @@ public sealed class SimulationFactory
                 x.Life.IsAlive &&
                 x.Relationships.PartnerId is null &&
                 x.Identity.Gender != human.Identity.Gender &&
-                Math.Abs(x.Life.Age - human.Life.Age) <= 15 &&
+                Math.Abs(x.Life.Age - human.Life.Age) <= 25 &&
                 !AreCloseRelatives(world, human, x)
             )
         ];
 
+        // Não encontrou ninguém compatível;
         if (candidates.Count == 0)
         {
             return;
         }
 
+        // Escolhe aleatoriamente um dos candidatos válidos;
         Human partner = candidates[RandomHelpers.RandomBetween(0, candidates.Count - 1)];
 
+        // Registra o relacionamento para ambos os lados;
         human.Relationships.SetPartner(life: human.Life, partnerId: partner.Id);
         partner.Relationships.SetPartner(life: partner.Life, partnerId: human.Id);
     }
@@ -214,19 +228,20 @@ public sealed class SimulationFactory
     /// <summary>
     /// Tenta encerrar um relacionamento existente.
     /// </summary>
-    private static void TryBreakRelationship(World world, Human human)
+    private static void TryDivorce(World world, Human human)
     {
         if (human.Relationships.PartnerId is null)
         {
             return;
         }
 
-        int chance = 1;
-
-        if (human.Needs.Happiness < 30)
+        int chance = human.Needs.Happiness switch
         {
-            chance += 4;
-        }
+            < 10 => 15,
+            < 20 => 10,
+            < 30 => 1,
+            _ => 0
+        };
 
         if (RandomHelpers.RandomBetween(1, 100) > chance)
         {
@@ -504,11 +519,11 @@ public sealed class SimulationFactory
         return children switch
         {
             0 => 0,
-            1 => -2,
-            2 => -5,
-            3 => -10,
-            4 => -15,
-            _ => -25
+            1 => -1,
+            2 => -3,
+            3 => -6,
+            4 => -10,
+            _ => -15
         };
     }
 
@@ -564,7 +579,7 @@ public sealed class SimulationFactory
             return;
         }
 
-        if (RandomHelpers.RandomBetween(1, 1000) > 2)
+        if (RandomHelpers.RandomBetween(1, 10000) > 5)
         {
             return;
         }
