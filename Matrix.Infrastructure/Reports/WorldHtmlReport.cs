@@ -14,7 +14,7 @@ public static class WorldHtmlReport
     /// </param>
     public static void Export(World world)
     {
-        string reportsFolder = Path.Combine(Path.GetTempPath(), "Matrix");
+        string reportsFolder = Path.Combine(Path.GetTempPath(), nameof(Matrix));
 
         if (Directory.Exists(reportsFolder))
         {
@@ -23,7 +23,7 @@ public static class WorldHtmlReport
 
         Directory.CreateDirectory(reportsFolder);
 
-        string filePath = Path.Combine(reportsFolder, "report.html");
+        string filePath = Path.Combine(reportsFolder, $"{nameof(WorldHtmlReport)}.html");
 
         string html = GenerateHtml(world);
 
@@ -66,6 +66,7 @@ public static class WorldHtmlReport
                     table {
                         border-collapse: collapse;
                         width: 100%;
+                        margin-bottom: 30px;
                     }
 
                     th, td {
@@ -80,6 +81,22 @@ public static class WorldHtmlReport
                     tr:nth-child(even) {
                         background: #fafafa;
                     }
+
+                    details {
+                        margin-bottom: 10px;
+                        border: 1px solid #ddd;
+                        border-radius: 6px;
+                        padding: 10px;
+                    }
+
+                    summary {
+                        cursor: pointer;
+                        font-weight: bold;
+                    }
+
+                    ul {
+                        margin-top: 10px;
+                    }
                 </style>
             </head>
             <body>
@@ -87,7 +104,32 @@ public static class WorldHtmlReport
 
         html.AppendLine($"<h1>Mundo {world.Name}</h1>");
 
+        AppendHumansTable(html, world);
+
+        AppendLifeEventsHistory(html, world.Humans);
+
         html.AppendLine("""
+            </body>
+            </html>
+            """);
+
+        return html.ToString();
+    }
+
+    /// <summary>
+    /// Adiciona a tabela de humanos ao relatório.
+    /// </summary>
+    /// <param name="html">
+    /// HTML em construção.
+    /// </param>
+    /// <param name="world">
+    /// Mundo da simulação.
+    /// </param>
+    private static void AppendHumansTable(StringBuilder html, World world)
+    {
+        html.AppendLine("""
+            <h2>Humanos</h2>
+
             <table>
                 <tr>
                     <th>Nascimento</th>
@@ -111,13 +153,73 @@ public static class WorldHtmlReport
                 """);
         }
 
-        html.AppendLine("""
-            </table>
-            </body>
-            </html>
-            """);
+        html.AppendLine("</table>");
+    }
 
-        return html.ToString();
+    /// <summary>
+    /// Adiciona o histórico de vida dos humanos ao relatório.
+    /// </summary>
+    /// <param name="html">
+    /// HTML em construção.
+    /// </param>
+    /// <param name="humans">
+    /// Humanos que terão seus eventos exibidos.
+    /// </param>
+    private static void AppendLifeEventsHistory(StringBuilder html, IEnumerable<Human> humans)
+    {
+        html.AppendLine("<h2>Histórico de vida</h2>");
+
+        foreach (Human human in humans.OrderBy(x => x.Identity.BirthDate))
+        {
+            if (human.Life.LifeEvents.Count == 0)
+            {
+                continue;
+            }
+
+            html.AppendLine($"""
+                <details>
+                    <summary>
+                        {human.Identity.FullName}
+                        ({human.Life.Age} anos)
+                    </summary>
+
+                    <ul>
+                """);
+
+            int lastBirthdayIndex = human.Life.LifeEvents.FindLastIndex(IsBirthdayEvent);
+
+            for (int i = 0; i < human.Life.LifeEvents.Count; i++)
+            {
+                string lifeEvent = human.Life.LifeEvents[i];
+
+                if (IsBirthdayEvent(lifeEvent) &&  i != lastBirthdayIndex)
+                {
+                    continue;
+                }
+
+                html.AppendLine($"<li>{lifeEvent}</li>");
+            }
+
+            html.AppendLine("""
+                    </ul>
+                </details>
+                """);
+        }
+    }
+
+    /// <summary>
+    /// Indica se o evento representa um aniversário.
+    /// </summary>
+    /// <param name="lifeEvent">
+    /// Evento a ser analisado.
+    /// </param>
+    /// <returns>
+    /// True quando o evento representa um aniversário.
+    /// </returns>
+    private static bool IsBirthdayEvent(string lifeEvent)
+    {
+        return lifeEvent.Contains("COMPLETOU", StringComparison.OrdinalIgnoreCase) &&
+               lifeEvent.Contains("ANOS", StringComparison.OrdinalIgnoreCase);
     }
     #endregion
 }
