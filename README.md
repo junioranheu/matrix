@@ -1,6 +1,6 @@
 # Matrix
 
-## Sobre o Projeto
+## Sobre o projeto
 
 Matrix é uma aplicação de console desenvolvida em C# e .NET 10 que simula a vida de milhares de pessoas ao longo dos anos.
 
