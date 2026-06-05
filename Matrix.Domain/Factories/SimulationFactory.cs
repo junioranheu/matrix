@@ -158,70 +158,80 @@ public sealed class SimulationFactory
     }
 
     /// <summary>
-    /// Registra relações entre irmãos e meio-irmãos.
-    /// Humanos que compartilham pai ou mãe são adicionados
-    /// ao cache de parentes próximos.
+    /// Agrupa humanos por pai e mãe e registra
+    /// relações de irmandade entre todos os membros
+    /// de cada família encontrada.
     /// </summary>
     private static void AddSiblingRelationships(World world, HashSet<(Guid first, Guid second)> cache)
     {
         // Agrupa os humanos por combinação de pai e mãe.
-        // Todos os membros de um mesmo grupo são irmãos ou meio-irmãos.
-        Dictionary<(Guid? FatherId, Guid? MotherId), List<Human>> families = [];
+        // O tamanho inicial evita realocações internas
+        // quando a população é muito grande.
+        Dictionary<(Guid? fatherId, Guid? motherId), List<Guid>> families = new(world.Humans.Count);
 
         foreach (Human human in world.Humans)
         {
+            Guid? fatherId = human.Family.FatherId;
+            Guid? motherId = human.Family.MotherId;
+
             // Humanos sem pai e mãe conhecidos não podem
             // ser agrupados como irmãos.
             //
-            // Além de evitar falsos positivos, isso impede
-            // a criação de uma família gigantesca contendo
-            // todos os humanos iniciais da simulação.
-            if (human.Family.FatherId is null && human.Family.MotherId is null)
+            // Isso evita falsos positivos e impede a criação
+            // de uma família gigantesca contendo todos os
+            // habitantes sem ascendência registrada.
+            if (fatherId is null && motherId is null)
             {
                 continue;
             }
 
             // Utiliza a combinação de pai e mãe como chave
             // para identificar uma família.
-            (Guid?, Guid?) key = (human.Family.FatherId, human.Family.MotherId);
+            (Guid?, Guid?) key = (fatherId, motherId);
 
-            // Caso a família ainda não exista no dicionário,
-            // cria uma nova lista para armazenar seus membros.
-            if (!families.TryGetValue(key, out List<Human>? family))
+            // Cria a família caso ela ainda não exista.
+            if (!families.TryGetValue(key, out List<Guid>? family))
             {
                 family = [];
 
                 families[key] = family;
             }
 
-            // Adiciona o humano à sua respectiva família.
-            family.Add(human);
+            // Armazena apenas o identificador do humano,
+            // reduzindo consumo de memória e melhorando
+            // a localidade de cache durante o processamento.
+            family.Add(human.Id);
         }
 
-        // Percorre cada família encontrada.
-        foreach (List<Human> family in families.Values)
+        // Percorre todas as famílias encontradas.
+        foreach (List<Guid> family in families.Values)
         {
+            int count = family.Count;
+
             // Famílias com apenas um membro não possuem
             // irmãos para relacionar.
-            if (family.Count < 2)
+            if (count < 2)
             {
                 continue;
             }
 
-            // Percorre todos os membros da família.
-            for (int i = 0; i < family.Count; i++)
+            // Gera todas as combinações únicas de irmãos.
+            //
+            // Exemplo:
+            // A B C D
+            //
+            // A-B A-C A-D
+            // B-C B-D
+            // C-D
+            //
+            // Evita comparações duplicadas como B-A.
+            for (int i = 0; i < count - 1; i++)
             {
-                Human first = family[i];
+                Guid first = family[i];
 
-                // Compara o membro atual apenas com os
-                // membros seguintes, evitando duplicidades.
-                for (int j = i + 1; j < family.Count; j++)
+                for (int j = i + 1; j < count; j++)
                 {
-                    Human second = family[j];
-
-                    // Registra a relação de irmandade entre
-                    // os dois humanos no cache.
-                    AddRelationship(cache, first: first.Id, second: second.Id);
+                    AddRelationship(cache, first: first, second: family[j]);
                 }
             }
         }
