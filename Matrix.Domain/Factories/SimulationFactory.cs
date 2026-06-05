@@ -25,6 +25,7 @@ public sealed class SimulationFactory
     private const int NATURAL_DEATH_AGE_90 = 77;
     private const int NATURAL_DEATH_AGE_100 = 97;
 
+    private const int YEAR_MAX_DIFFERENCE_FOR_REPRODUCTION = 35;
     private const int YEAR_SIBLING_RELATIONSHIPS_BANNED = 500;
     #endregion
 
@@ -119,7 +120,8 @@ public sealed class SimulationFactory
     /// </summary>
     private static HashSet<(Guid first, Guid second)> BuildCloseRelativesCache(World world)
     {
-        HashSet<(Guid, Guid)> cache = [];
+        // HashSet<(Guid, Guid)> cache = [];
+        HashSet<(Guid, Guid)> cache = new(world.Humans.Count * 4);
 
         foreach (Human human in world.Humans)
         {
@@ -254,21 +256,23 @@ public sealed class SimulationFactory
     /// </summary>
     private static void ProcessPopulation(World world)
     {
-        HashSet<(Guid first, Guid second)> closeRelatives = BuildCloseRelativesCache(world);
-
-        List<Human> humans = [.. world.Humans.Where(x => x.Life.IsAlive)];
-
-        Dictionary<Guid, Human> humansById = humans.ToDictionary(x => x.Id);
-
+        // Dados globais da simulação;
         DateOnly currentDate = world.CurrentDate;
 
-        List<Human> aliveMen = [.. humans.Where(x => x.Identity.Gender == GenderEnum.Male)];
+        // Habitantes vivos;
+        List<Human> humans = [.. world.Humans.Where(x => x.Life.IsAlive)];
+        List<Human> men = [.. humans.Where(x => x.Identity.Gender == GenderEnum.Male)];
+        List<Human> women = [.. humans.Where(x => x.Identity.Gender == GenderEnum.Female)];
 
-        List<Human> aliveWomen = [.. humans.Where(x => x.Identity.Gender == GenderEnum.Female)];
+        // Índices de busca;
+        Dictionary<Guid, Human> humansById = humans.ToDictionary(x => x.Id);
+
+        // Cache de relacionamentos;
+        HashSet<(Guid first, Guid second)> closeRelatives = BuildCloseRelativesCache(world);
 
         foreach (Human human in humans)
         {
-            List<Human> potentialPartners = GetPotentialPartners(human, aliveMen, aliveWomen);
+            List<Human> potentialPartners = GetPotentialPartners(human, men, women);
 
             ProcessHumanYear(human, currentDate);
 
@@ -303,9 +307,9 @@ public sealed class SimulationFactory
     /// com o sexo do habitante atual, evitando percorrer
     /// pessoas que jamais poderiam formar um relacionamento.
     /// </summary>
-    private static List<Human> GetPotentialPartners(Human human, List<Human> aliveMen, List<Human> aliveWomen)
+    private static List<Human> GetPotentialPartners(Human human, List<Human> men, List<Human> women)
     {
-        List<Human> potentialPartners = human.Identity.Gender == GenderEnum.Male ? aliveWomen : aliveMen;
+        List<Human> potentialPartners = human.Identity.Gender == GenderEnum.Male ? women : men;
 
         return potentialPartners;
     }
@@ -367,7 +371,7 @@ public sealed class SimulationFactory
                 x.Life.IsAlive &&
                 x.Relationships.PartnerId is null &&
                 x.Identity.Gender != human.Identity.Gender &&
-                Math.Abs(x.Life.Age - human.Life.Age) <= 25 &&
+                Math.Abs(x.Life.Age - human.Life.Age) <= YEAR_MAX_DIFFERENCE_FOR_REPRODUCTION &&
                 !closeRelatives.Contains((human.Id, x.Id))
             )
         ];
