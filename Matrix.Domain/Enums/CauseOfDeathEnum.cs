@@ -22,6 +22,9 @@ public enum CauseOfDeathEnum
     [Description("Morte causada por um acidente")]
     Accident,
 
+    [Description("Morte causada por acidente de trabalho")]
+    WorkplaceAccident,
+
     [Description("Morte causada por acidente automobilístico")]
     CarAccident,
 
@@ -36,6 +39,12 @@ public enum CauseOfDeathEnum
 
     [Description("Morte causada por depressão")]
     Depression,
+
+    [Description("Morte causada por erro médico")]
+    MedicalMalpractice,
+
+    [Description("Morte causada por desastre natural")]
+    NaturalDisaster,
 
     [Description("Causa da morte desconhecida")]
     Unknown

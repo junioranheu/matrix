@@ -14,6 +14,11 @@ public sealed class HumanRelationships()
     /// Histórico de amantes.
     /// </summary>
     public List<Guid> LoversIds { get; private set; } = [];
+
+    /// <summary>
+    /// Indica se o relacionamento foi formalizado em casamento.
+    /// </summary>
+    public bool IsMarried { get; private set; } = false;
     #endregion
 
     #region computed props
@@ -40,6 +45,7 @@ public sealed class HumanRelationships()
     public void RemovePartner()
     {
         PartnerId = null;
+        IsMarried = false;
     }
 
     /// <summary>
@@ -58,6 +64,8 @@ public sealed class HumanRelationships()
         }
 
         SetPartner(life, partnerId);
+
+        IsMarried = true;
 
         needs.IncreaseHappiness(15);
 
@@ -82,6 +90,9 @@ public sealed class HumanRelationships()
         }
 
         RemovePartner();
+
+        // Ensure married flag cleared
+        IsMarried = false;
 
         needs.IncreaseStress(50);
 

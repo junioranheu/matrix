@@ -44,7 +44,7 @@ public sealed class SimulationFactory
                 return;
             }
 
-           await ProcessPopulation(world);
+            await ProcessPopulation(world);
 
             yearReport.Invoke(settings, world, isFinalReport);
 
@@ -271,6 +271,9 @@ public sealed class SimulationFactory
         // Cache de relacionamentos;
         HashSet<(Guid first, Guid second)> closeRelatives = BuildCloseRelativesCache(world);
 
+        // Eventos globais anteriores ao processamento individual (ex.: desastres naturais);
+        TryNaturalDisaster(world, currentDate, humans);
+
         // Exibe o progresso do processamento da população em tempo real;
         await AnsiConsole.Progress().StartAsync(ctx =>
         {
@@ -286,7 +289,11 @@ public sealed class SimulationFactory
 
                 TryFindLover(human, potentialPartners, closeRelatives);
 
-                TryDivorce(humansById, human);
+                TryDivorce(humansById, human, currentDate);
+
+                TryMakeFriendsEnemies(human, potentialPartners);
+
+                TryMarryCouple(humansById, human, currentDate);
 
                 TryGainHappiness(human);
 
@@ -298,6 +305,22 @@ public sealed class SimulationFactory
 
                 TryMoveCountry(human, currentDate);
 
+                TrySleepEatExercise(human, currentDate);
+
+                TryStudyAndGraduate(human, currentDate);
+
+                TryWorkAndCareer(human, currentDate);
+
+                TrySicknessAndRecovery(human, currentDate);
+
+                TryDonateOrLoan(human, currentDate);
+
+                TryAttemptTheft(humansById, human);
+
+                TryWorkplaceAccident(humansById, human, currentDate, world);
+
+                TryMedicalMalpractice(humansById, human, currentDate, world);
+
                 TryAccident(human, currentDate);
 
                 TryProcreate(humansById, world, human, currentDate, closeRelatives);
@@ -306,6 +329,9 @@ public sealed class SimulationFactory
 
                 TryToGetDepression(humansById, human, currentDate);
 
+                TryDistributeInheritance(human, world, currentDate);
+
+                // Incrementa o progresso após processar cada habitante;
                 task.Increment(1);
             }
 
@@ -439,7 +465,7 @@ public sealed class SimulationFactory
     /// <summary>
     /// Tenta encerrar um relacionamento existente.
     /// </summary>
-    private static void TryDivorce(Dictionary<Guid, Human> humansById, Human human)
+    private static void TryDivorce(Dictionary<Guid, Human> humansById, Human human, DateOnly currentDate)
     {
         if (human.Relationships.PartnerId is null)
         {
@@ -466,8 +492,9 @@ public sealed class SimulationFactory
             humansById.TryGetValue(human.Relationships.PartnerId.Value, out partner);
         }
 
-        human.Relationships.RemovePartner();
-        partner?.Relationships.RemovePartner();
+        // Use the full Divorce method to ensure emotional effects and married flag are updated.
+        human.Relationships.Divorce(human.Life, human.Needs, human.Emotions, currentDate);
+        partner?.Relationships.Divorce(partner.Life, partner.Needs, partner.Emotions, currentDate);
     }
 
     /// <summary>
@@ -736,6 +763,314 @@ public sealed class SimulationFactory
     }
 
     /// <summary>
+    /// Processa efeitos após uma morte: atualiza parceiro e distribui herança.
+    /// </summary>
+    private static void ProcessDeathEffects(Human deceased, World world, DateOnly currentDate, Dictionary<Guid, Human> humansById)
+    {
+        // Notifica e limpa o parceiro;
+        if (deceased.Relationships.PartnerId is not null)
+        {
+            if (humansById.TryGetValue(deceased.Relationships.PartnerId.Value, out Human? partner) && partner.Life.IsAlive)
+            {
+                // Remove partner reference and married flag;
+                partner.Relationships.RemovePartner();
+
+                // Ajusta felicidade e registra evento;
+                partner.Needs.DecreaseHappiness(30);
+                partner.Life.AddLifeEvent(description: "Ficou viúvo.", currentDate);
+            }
+        }
+
+        // Distribui herança simples;
+        TryDistributeInheritance(deceased, world, currentDate);
+    }
+
+    /// <summary>
+    /// Tenta um acidente de trabalho dependendo da profissão.
+    /// </summary>
+    private static void TryWorkplaceAccident(Dictionary<Guid, Human> humansById, Human human, DateOnly currentDate, World world)
+    {
+        if (!human.Life.IsAlive)
+        {
+            return;
+        }
+
+        if (human.Career.CareerStatus != CareerStatusEnum.Employed)
+        {
+            return;
+        }
+
+        // Taxas por 10.000 (ex.: 50 => 0.5% ao ano);
+        int rate = human.Career.JobType switch
+        {
+            JobTypeEnum.Miner => 50,
+            JobTypeEnum.Builder => 40,
+            JobTypeEnum.Electrician => 60,
+            JobTypeEnum.Plumber => 30,
+            JobTypeEnum.Mechanic => 40,
+            JobTypeEnum.Farmer => 30,
+            JobTypeEnum.Fisherman => 30,
+            JobTypeEnum.Firefighter => 80,
+            JobTypeEnum.PoliceOfficer => 50,
+            JobTypeEnum.Soldier => 60,
+            JobTypeEnum.Driver => 20,
+            _ => 0
+        };
+
+        if (rate == 0)
+        {
+            return;
+        }
+
+        if (RandomHelpers.RandomBetween(1, 10000) > rate)
+        {
+            return;
+        }
+
+        human.Life.Die(needs: human.Needs, cause: CauseOfDeathEnum.WorkplaceAccident, dateOfDeath: currentDate);
+
+        ProcessDeathEffects(human, world, currentDate, humansById);
+    }
+
+    /// <summary>
+    /// Tenta erro médico grave quando o humano possui doenças.
+    /// </summary>
+    private static void TryMedicalMalpractice(Dictionary<Guid, Human> humansById, Human human, DateOnly currentDate, World world)
+    {
+        if (!human.Life.IsAlive)
+        {
+            return;
+        }
+
+        if (human.Health.Diseases.Count == 0)
+        {
+            return;
+        }
+
+        // Probabilidade baixa de erro médico
+        if (RandomHelpers.RandomBetween(1, 10000) > 5)
+        {
+            return;
+        }
+
+        human.Life.Die(needs: human.Needs, cause: CauseOfDeathEnum.MedicalMalpractice, dateOfDeath: currentDate);
+
+        ProcessDeathEffects(human, world, currentDate, humansById);
+    }
+
+    /// <summary>
+    /// Evento raro: desastre natural que afeta um país inteiro.
+    /// </summary>
+    private static void TryNaturalDisaster(World world, DateOnly currentDate, List<Human> humans)
+    {
+        // Baixa probabilidade anual de um desastre;
+        if (RandomHelpers.RandomBetween(1, 1000) > 5)
+        {
+            return;
+        }
+
+        CountryEnum affected = EnumExtensions.GetRandom<CountryEnum>();
+
+        // Seleciona habitantes vivos no país afetado;
+        List<Human> victims = [.. humans.Where(x => x.Location.CurrentCountry == affected)];
+
+        if (victims.Count == 0)
+        {
+            return;
+        }
+
+        // Morte depende de vulnerabilidade;
+        foreach (Human human in victims)
+        {
+            int chance = human.Life.Age switch
+            {
+                >= 60 => 15,
+                < 12 => 10,
+                _ => 4
+            };
+
+            if (RandomHelpers.RandomBetween(1, 100) <= chance)
+            {
+                // encontrar índice atual do humano no mundo para efeitos posteriores;
+                Dictionary<Guid, Human> humansById = world.Humans.ToDictionary(x => x.Id);
+
+                human.Life.Die(needs: human.Needs, cause: CauseOfDeathEnum.NaturalDisaster, dateOfDeath: currentDate);
+
+                ProcessDeathEffects(human, world, currentDate, humansById);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Pequenos eventos diários: sono, alimentação e exercício.
+    /// </summary>
+    private static void TrySleepEatExercise(Human human, DateOnly currentDate)
+    {
+        if (!human.Life.IsAlive)
+        {
+            return;
+        }
+
+        // Sono ocasional;
+        if (RandomHelpers.RandomBetween(1, 100) <= 10)
+        {
+            int hours = RandomHelpers.RandomBetween(1, 8);
+            HumanHealth.Sleep(human.Life, human.Needs, hours);
+        }
+
+        // Alimentação;
+        if (RandomHelpers.RandomBetween(1, 100) <= 20)
+        {
+            int nutrition = RandomHelpers.RandomBetween(1, 20);
+            HumanHealth.Eat(human.Life, human.Needs, nutrition);
+        }
+
+        // Exercício físico;
+        if (RandomHelpers.RandomBetween(1, 100) <= 5)
+        {
+            int hours = RandomHelpers.RandomBetween(1, 3);
+            HumanHealth.Exercise(human.Life, human.Needs, hours, currentDate);
+        }
+    }
+
+    /// <summary>
+    /// Simula estudo e possibilidade de conclusão de formação.
+    /// </summary>
+    private static void TryStudyAndGraduate(Human human, DateOnly currentDate)
+    {
+        if (!human.Life.IsAlive)
+        {
+            return;
+        }
+
+        // Crianças e jovens estudam com mais frequência;
+        if (human.Life.Age >= 6 && human.Life.Age <= 25)
+        {
+            if (RandomHelpers.RandomBetween(1, 100) <= 20)
+            {
+                int hours = RandomHelpers.RandomBetween(1, 5);
+                human.Education.Study(human.Life, human.Needs, hours);
+            }
+
+            // Pequena chance anual de concluir um nível;
+            if (RandomHelpers.RandomBetween(1, 100) <= 3)
+            {
+                human.Education.Graduate(human.Life, human.Needs, currentDate);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Tenta inserir o humano no mercado de trabalho, trabalhar, ser promovido, demitido ou aposentar.
+    /// </summary>
+    private static void TryWorkAndCareer(Human human, DateOnly currentDate)
+    {
+        if (!human.Life.IsAlive)
+        {
+            return;
+        }
+
+        // Apenas adultos podem trabalhar;
+        if (!human.Life.IsAdult)
+        {
+            return;
+        }
+
+        // Aposentadoria por idade;
+        if (human.Life.Age >= 65)
+        {
+            if (RandomHelpers.RandomBetween(1, 100) <= 50 && human.Career.CareerStatus != CareerStatusEnum.Retired)
+            {
+                human.Career.Retire(human.Life, human.Needs, currentDate);
+            }
+
+            return;
+        }
+
+        // Conseguir um emprego quando desempregado;
+        if (human.Career.CareerStatus != CareerStatusEnum.Employed)
+        {
+            if (RandomHelpers.RandomBetween(1, 100) <= 20)
+            {
+                JobTypeEnum job = EnumExtensions.GetRandom<JobTypeEnum>();
+
+                if (job != JobTypeEnum.None)
+                {
+                    human.Career.SetJob(human.Life, job, currentDate);
+                }
+            }
+
+            return;
+        }
+
+        // Trabalhar e receber salário;
+        decimal salary = RandomHelpers.RandomBetween(min: 500, max: 10_000);
+        human.Career.Work(human.Life, human.Finance, human.Needs, salary);
+
+        // Promoção ocasional;
+        if (RandomHelpers.RandomBetween(1, 100) <= 5)
+        {
+            human.Career.Promote(human.Life, human.Needs, currentDate);
+        }
+
+        // Demissão ocasional;
+        if (RandomHelpers.RandomBetween(1, 1000) <= 2)
+        {
+            human.Career.Fire(human.Life, human.Needs, wantedToBeFired: false, currentDate);
+        }
+    }
+
+    /// <summary>
+    /// Contrai doenças e tenta se curar.
+    /// </summary>
+    private static void TrySicknessAndRecovery(Human human, DateOnly currentDate)
+    {
+        if (!human.Life.IsAlive)
+        {
+            return;
+        }
+
+        // Contrair uma doença;
+        if (human.Health.Diseases.Count == 0 && RandomHelpers.RandomBetween(1, 100) <= 5)
+        {
+            DiseaseEnum disease = EnumExtensions.GetRandom<DiseaseEnum>();
+            human.Health.ContractDisease(human.Life, human.Needs, human.Emotions, disease, currentDate);
+        }
+
+        // Tentar curar uma doença existente;
+        if (human.Health.Diseases.Count > 0 && RandomHelpers.RandomBetween(1, 100) <= 20)
+        {
+            DiseaseEnum disease = human.Health.Diseases[0];
+            human.Health.CureDisease(human.Life, human.Needs, human.Health, disease, currentDate);
+        }
+    }
+
+    /// <summary>
+    /// Eventos financeiros: doações e empréstimos.
+    /// </summary>
+    private static void TryDonateOrLoan(Human human, DateOnly currentDate)
+    {
+        if (!human.Life.IsAlive)
+        {
+            return;
+        }
+
+        // Doação por ricos
+        if (human.Finance.IsRich && RandomHelpers.RandomBetween(1, 1000) <= 5)
+        {
+            decimal amount = Math.Max(1, human.Finance.Money / 10);
+            human.Finance.Donate(human.Life, human.Needs, amount, currentDate);
+        }
+
+        // Tomar empréstimo quando pobre
+        if (human.Finance.IsPoor && RandomHelpers.RandomBetween(1, 1000) <= 10)
+        {
+            decimal amount = RandomHelpers.RandomBetween(min: 100, max: 10_000);
+            human.Finance.TakeLoan(human.Life, amount, currentDate);
+        }
+    }
+
+    /// <summary>
     /// Evento raro de enriquecimento.
     /// Pode representar herança, negócio bem sucedido,
     /// prêmio ou investimento lucrativo.
@@ -882,6 +1217,183 @@ public sealed class SimulationFactory
         partner?.Needs.DecreaseHappiness(25);
 
         return true;
+    }
+
+    /// <summary>
+    /// Tenta criar amizades ou inimizades aleatórias.
+    /// </summary>
+    private static void TryMakeFriendsEnemies(Human human, List<Human> potentialPartners)
+    {
+        if (!human.Life.IsAlive)
+        {
+            return;
+        }
+
+        // Chance pequena de fazer um amigo
+        if (RandomHelpers.RandomBetween(1, 100) <= 8)
+        {
+            List<Human> candidates = [.. potentialPartners.Where(x => x.Id != human.Id && x.Life.IsAlive)];
+
+            if (candidates.Count > 0)
+            {
+                Human friend = candidates[RandomHelpers.RandomBetween(0, candidates.Count - 1)];
+                human.Social.AddFriend(human.Life, human.Needs, friend.Id);
+            }
+        }
+
+        // Chance menor de arrumar um inimigo
+        if (RandomHelpers.RandomBetween(1, 100) <= 3)
+        {
+            List<Human> candidates = [.. potentialPartners.Where(x => x.Id != human.Id && x.Life.IsAlive)];
+
+            if (candidates.Count > 0)
+            {
+                Human enemy = candidates[RandomHelpers.RandomBetween(0, candidates.Count - 1)];
+                human.Social.AddEnemy(human.Life, human.Needs, enemy.Id);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Converte parceiros em cônjuges (casamento) ocasionalmente.
+    /// </summary>
+    private static void TryMarryCouple(Dictionary<Guid, Human> humansById, Human human, DateOnly currentDate)
+    {
+        if (!human.Life.IsAlive)
+        {
+            return;
+        }
+
+        if (human.Relationships.PartnerId is null)
+        {
+            return;
+        }
+
+        if (RandomHelpers.RandomBetween(1, 100) > 5)
+        {
+            return;
+        }
+
+        if (!humansById.TryGetValue(human.Relationships.PartnerId.Value, out Human? partner))
+        {
+            return;
+        }
+
+        // Ambos devem ser adultos e vivos
+        if (!human.Life.IsAdult || !partner.Life.IsAdult)
+        {
+            return;
+        }
+
+        // Registrar casamento para ambos
+        human.Relationships.Marry(human.Life, human.Needs, human.Emotions, partner.Id, currentDate);
+        partner.Relationships.Marry(partner.Life, partner.Needs, partner.Emotions, human.Id, currentDate);
+    }
+
+    /// <summary>
+    /// Tenta roubar dinheiro de outro humano.
+    /// </summary>
+    private static void TryAttemptTheft(Dictionary<Guid, Human> humansById, Human human)
+    {
+        if (!human.Life.IsAlive)
+        {
+            return;
+        }
+
+        // Humanos muito pobres têm mais chance de roubar
+        if (!human.Finance.IsPoor || RandomHelpers.RandomBetween(1, 1000) > 5)
+        {
+            return;
+        }
+
+        // Escolhe uma vítima aleatória que tenha dinheiro
+        List<Human> possibleVictims = [.. humansById.Values.Where(x => x.Id != human.Id && x.Life.IsAlive && x.Finance.Money > 0)];
+
+        if (possibleVictims.Count == 0)
+        {
+            return;
+        }
+
+        Human victim = possibleVictims[RandomHelpers.RandomBetween(0, possibleVictims.Count - 1)];
+
+        decimal amount = Math.Min(victim.Finance.Money, RandomHelpers.RandomBetween(min: 10, max: 1_000));
+
+        if (amount <= 0)
+        {
+            return;
+        }
+
+        // Transferência simples: recebe o ladrão, vítima perde dinheiro (tentativa sem validação de vida da vítima);
+        victim.Finance.SpendMoney(victim.Life, amount);
+        human.Finance.EarnMoney(human.Life, amount);
+    }
+
+    /// <summary>
+    /// Distribui herança simples quando um humano morre.
+    /// </summary>
+    private static void TryDistributeInheritance(Human human, World world, DateOnly currentDate)
+    {
+        // Se o humano não morreu, não há herança para distribuir;
+        if (!human.Life.IsDead)
+        {
+            return;
+        }
+
+        // Liquidar o espólio (paga dívidas e retorna o montante disponível)
+        decimal estate = human.Finance.SettleEstate(human.Life, currentDate);
+
+        if (estate <= 0)
+        {
+            return;
+        }
+
+        List<Human> heirs = [];
+
+        // Preferir parceiro vivo;
+        if (human.Relationships.PartnerId is not null)
+        {
+            Human? partner = world.Humans.FirstOrDefault(x => x.Id == human.Relationships.PartnerId.Value);
+            if (partner is not null && partner.Life.IsAlive)
+            {
+                heirs.Add(partner);
+            }
+        }
+
+        // Filhos vivos;
+        foreach (Guid childId in human.Family.ChildrenIds)
+        {
+            Human? child = world.Humans.FirstOrDefault(x => x.Id == childId);
+            if (child is not null && child.Life.IsAlive)
+            {
+                heirs.Add(child);
+            }
+        }
+
+        // Se não houver herdeiros válidos, dá parte para amigos;
+        if (heirs.Count == 0)
+        {
+            foreach (Guid friendId in human.Social.FriendsIds)
+            {
+                Human? friend = world.Humans.FirstOrDefault(x => x.Id == friendId);
+                if (friend is not null && friend.Life.IsAlive)
+                {
+                    heirs.Add(friend);
+                }
+            }
+        }
+
+        if (heirs.Count == 0)
+        {
+            return;
+        }
+
+        decimal portion = Math.Max(1, Math.Floor(estate / heirs.Count));
+
+        foreach (Human heir in heirs)
+        {
+            string from = $"{human.Identity.FirstName} {human.Identity.LastName}";
+            heir.Finance.ReceiveInheritance(heir.Life, heir.Needs, portion, currentDate, from);
+        }
     }
 
     /// <summary>

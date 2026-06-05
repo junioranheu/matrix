@@ -137,7 +137,7 @@ public sealed class HumanFinance()
     /// <summary>
     /// Recebe herança.
     /// </summary>
-    public void ReceiveInheritance(HumanLife life, HumanNeeds needs, decimal amount, DateOnly currentDate)
+    public void ReceiveInheritance(HumanLife life, HumanNeeds needs, decimal amount, DateOnly currentDate, string? from = null)
     {
         if (life.CannotAct() || amount <= 0)
         {
@@ -148,7 +148,57 @@ public sealed class HumanFinance()
 
         needs.IncreaseHappiness(10);
 
-        life.AddLifeEvent(description: $"Recebeu uma herança de {amount:C}.", currentDate);
+        if (string.IsNullOrWhiteSpace(from))
+        {
+            life.AddLifeEvent(description: $"Recebeu uma herança de {amount:C}.", currentDate);
+        }
+        else
+        {
+            life.AddLifeEvent(description: $"Recebeu uma herança de {amount:C} de {from}.", currentDate);
+        }
+    }
+
+    /// <summary>
+    /// Liquida o espólio do humano (paga dívidas e retorna o montante disponível para herança).
+    /// Após a liquidação o patrimônio (Money) é zerado e as dívidas são consideradas pagas na medida do possível.
+    /// </summary>
+    public decimal SettleEstate(HumanLife life, DateOnly currentDate)
+    {
+        // Não verificamos life.CannotAct() aqui pois o espólio pode ser liquidado após a morte.
+
+        decimal estate = Money;
+
+        if (estate <= 0 && Debt <= 0)
+        {
+            // Nada a distribuir
+            Money = 0;
+            Debt = 0;
+            return 0m;
+        }
+
+        // Pagar dívidas com o patrimônio disponível
+        if (Debt > 0)
+        {
+            if (estate >= Debt)
+            {
+                estate -= Debt;
+                Debt = 0;
+            }
+            else
+            {
+                // Patrimônio insuficiente para quitar toda a dívida: credores recebem tudo
+                Debt -= estate;
+                estate = 0;
+            }
+        }
+
+        // Zera o patrimônio do falecido
+        Money = 0;
+
+        // Registra evento de liquidação no histórico de vida
+        life.AddLifeEvent(description: $"Espólio liquidado: {estate:C} disponível para herança.", currentDate);
+
+        return estate;
     }
 
     /// <summary>
