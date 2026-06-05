@@ -32,6 +32,20 @@ public sealed class SimulationFactory
     #endregion
 
     /// <summary>
+    /// Retorna o grau máximo de paralelismo a ser utilizado nas operações paralelas.
+    /// Usa 75% dos núcleos disponíveis (arredondando para cima) com mínimo de 1.
+    /// </summary>
+    private static int GetMaxDegreeOfParallelism()
+    {
+        int cores = Environment.ProcessorCount;
+        int computed = (int)Math.Ceiling(cores * 0.75);
+
+        return Math.Max(1, computed);
+    }
+
+    private static ParallelOptions GetParallelOptions() => new() { MaxDegreeOfParallelism = GetMaxDegreeOfParallelism() };
+
+    /// <summary>
     /// Executa a simulação completa.
     /// </summary>
     public static async Task Run(InitialSettings settings, World world, bool isFinalReport, Action<InitialSettings, World, bool> yearReport)
@@ -127,10 +141,10 @@ public sealed class SimulationFactory
         // para reduzir tempo de parede ao agrupar parentes próximos.
 
         // É usado um ConcurrentDictionary como um HashSet thread-safe (valor dummy);
-        ConcurrentDictionary<(Guid, Guid), byte> pairSet = new(concurrencyLevel: Environment.ProcessorCount, capacity: Math.Max(16, world.Humans.Count * 4));
+        ConcurrentDictionary<(Guid, Guid), byte> pairSet = new(concurrencyLevel: GetMaxDegreeOfParallelism(), capacity: Math.Max(16, world.Humans.Count * 4));
 
         // Adiciona relações pai-filho em paralelo;
-        Parallel.ForEach(world.Humans, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, human =>
+        Parallel.ForEach(world.Humans, GetParallelOptions(), human =>
         {
             if (human.Family.FatherId is not null)
             {
@@ -160,7 +174,7 @@ public sealed class SimulationFactory
             // Agrupa humanos por combinação (pai, mãe) em um dicionário concorrente;
             var families = new ConcurrentDictionary<(Guid? fatherId, Guid? motherId), ConcurrentBag<Guid>>(Environment.ProcessorCount, Math.Max(16, world.Humans.Count));
 
-            Parallel.ForEach(world.Humans, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, human =>
+            Parallel.ForEach(world.Humans, GetParallelOptions(), human =>
             {
                 Guid? fatherId = human.Family.FatherId;
                 Guid? motherId = human.Family.MotherId;
@@ -235,7 +249,7 @@ public sealed class SimulationFactory
         // Fase A: processa em paralelo apenas mudanças individuais de cada humano.
         // Tudo que depende de outros humanos ou altera o estado global da simulação
         // fica para a Fase B, executada de forma sequencial.
-        Parallel.ForEach(humans, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, human =>
+        Parallel.ForEach(humans, GetParallelOptions(), human =>
         {
             List<Human> potentialPartners = GetPotentialPartners(human, men, women);
 
