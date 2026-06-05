@@ -66,7 +66,7 @@ public sealed class InitialSettings
             int maxAmountOfCountries = Enum.GetValues<CountryEnum>().Length;
 
             StartingCouplesByCountry = AnsiConsole.Prompt(
-                new TextPrompt<int>("Quantos países deseja que sejam populados?").
+                new TextPrompt<int>("Quantos países deseja que sejam populados inicialmente?").
                     PromptStyle("cyan").
                     ValidationErrorMessage($"[red]A quantidade de países deve estar entre {minAmountOfCountries} e {maxAmountOfCountries}.[/]").
                     Validate(x => x >= minAmountOfCountries && x <= maxAmountOfCountries));
@@ -76,7 +76,7 @@ public sealed class InitialSettings
             const int maxCouples = 100;
 
             StartingCouplesByCountry = AnsiConsole.Prompt(
-                new TextPrompt<int>("Quantos casais deseja iniciar na civilização?").
+                new TextPrompt<int>("Quantos casais deseja iniciar na civilização (por país)?").
                     PromptStyle("cyan").
                     Validate(x =>
                     {
