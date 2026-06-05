@@ -4,6 +4,7 @@ using Matrix.Domain.Helpers;
 using Matrix.Shared.Extensions;
 using Matrix.Shared.Helpers;
 using Spectre.Console;
+using System.Collections.Concurrent;
 
 namespace Matrix.Domain.Factories;
 
@@ -44,7 +45,7 @@ public sealed class SimulationFactory
                 return;
             }
 
-            await ProcessPopulation(world);
+            await ProcessHumanLifecycle(world);
 
             yearReport.Invoke(settings, world, isFinalReport);
 
@@ -121,141 +122,95 @@ public sealed class SimulationFactory
     /// </summary>
     private static HashSet<(Guid first, Guid second)> BuildCloseRelativesCache(World world)
     {
-        // HashSet<(Guid, Guid)> cache = [];
-        HashSet<(Guid, Guid)> cache = new(world.Humans.Count * 4);
+        // Para populações grandes, a construção do cache pode ser custosa.
+        // Foi implementada uma versão paralela usando coleções concorrentes
+        // para reduzir tempo de parede ao agrupar parentes próximos.
 
-        foreach (Human human in world.Humans)
+        // É usado um ConcurrentDictionary como um HashSet thread-safe (valor dummy);
+        ConcurrentDictionary<(Guid, Guid), byte> pairSet = new(concurrencyLevel: Environment.ProcessorCount, capacity: Math.Max(16, world.Humans.Count * 4));
+
+        // Adiciona relações pai-filho em paralelo;
+        Parallel.ForEach(world.Humans, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, human =>
         {
-            AddParentRelationships(cache, human);
-        }
+            if (human.Family.FatherId is not null)
+            {
+                (Guid Id, Guid Value) a = (human.Id, human.Family.FatherId.Value);
+                (Guid Value, Guid Id) b = (human.Family.FatherId.Value, human.Id);
+
+                pairSet.TryAdd(a, 0);
+                pairSet.TryAdd(b, 0);
+            }
+
+            if (human.Family.MotherId is not null)
+            {
+                (Guid Id, Guid Value) a = (human.Id, human.Family.MotherId.Value);
+                (Guid Value, Guid Id) b = (human.Family.MotherId.Value, human.Id);
+
+                pairSet.TryAdd(a, 0);
+                pairSet.TryAdd(b, 0);
+            }
+        });
 
         // Durante os primeiros séculos da civilização,
         // relacionamentos entre irmãos ainda eram socialmente aceitos.
-        // A partir deste período, a sociedade passa
-        // a reconhecer e evitar esse tipo de relação, sendo
-        // necessário identificar os vínculos de irmandade.
+        // A partir deste período, a sociedade passa a reconhecer e evitar
+        // esse tipo de relação; é necessário identificar os vínculos de irmandade.
         if (world.CurrentYear >= YEAR_SIBLING_RELATIONSHIPS_BANNED)
         {
-            AddSiblingRelationships(world, cache);
-        }
+            // Agrupa humanos por combinação (pai, mãe) em um dicionário concorrente;
+            var families = new ConcurrentDictionary<(Guid? fatherId, Guid? motherId), ConcurrentBag<Guid>>(Environment.ProcessorCount, Math.Max(16, world.Humans.Count));
 
-        return cache;
-    }
-
-    /// <summary>
-    /// Registra uma relação de parentesco nos dois sentidos.
-    /// Exemplo:
-    /// João -> Maria
-    /// Maria -> João
-    /// </summary>
-    private static void AddRelationship(HashSet<(Guid first, Guid second)> cache, Guid first, Guid second)
-    {
-        cache.Add((first, second));
-        cache.Add((second, first));
-    }
-
-    /// <summary>
-    /// Registra relações entre pais e filhos.
-    /// </summary>
-    private static void AddParentRelationships(HashSet<(Guid first, Guid second)> cache, Human child)
-    {
-        if (child.Family.FatherId is not null)
-        {
-            AddRelationship(cache, first: child.Id, second: child.Family.FatherId.Value);
-        }
-
-        if (child.Family.MotherId is not null)
-        {
-            AddRelationship(cache, first: child.Id, second: child.Family.MotherId.Value);
-        }
-    }
-
-    /// <summary>
-    /// Agrupa humanos por pai e mãe e registra
-    /// relações de irmandade entre todos os membros
-    /// de cada família encontrada.
-    /// </summary>
-    private static void AddSiblingRelationships(World world, HashSet<(Guid first, Guid second)> cache)
-    {
-        // Agrupa os humanos por combinação de pai e mãe.
-        // O tamanho inicial evita realocações internas
-        // quando a população é muito grande.
-        Dictionary<(Guid? fatherId, Guid? motherId), List<Guid>> families = new(world.Humans.Count);
-
-        foreach (Human human in world.Humans)
-        {
-            Guid? fatherId = human.Family.FatherId;
-            Guid? motherId = human.Family.MotherId;
-
-            // Humanos sem pai e mãe conhecidos não podem
-            // ser agrupados como irmãos.
-            //
-            // Isso evita falsos positivos e impede a criação
-            // de uma família gigantesca contendo todos os
-            // habitantes sem ascendência registrada.
-            if (fatherId is null && motherId is null)
+            Parallel.ForEach(world.Humans, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, human =>
             {
-                continue;
-            }
+                Guid? fatherId = human.Family.FatherId;
+                Guid? motherId = human.Family.MotherId;
 
-            // Utiliza a combinação de pai e mãe como chave
-            // para identificar uma família.
-            (Guid?, Guid?) key = (fatherId, motherId);
-
-            // Cria a família caso ela ainda não exista.
-            if (!families.TryGetValue(key, out List<Guid>? family))
-            {
-                family = [];
-
-                families[key] = family;
-            }
-
-            // Armazena apenas o identificador do humano,
-            // reduzindo consumo de memória e melhorando
-            // a localidade de cache durante o processamento.
-            family.Add(human.Id);
-        }
-
-        // Percorre todas as famílias encontradas.
-        foreach (List<Guid> family in families.Values)
-        {
-            int count = family.Count;
-
-            // Famílias com apenas um membro não possuem
-            // irmãos para relacionar.
-            if (count < 2)
-            {
-                continue;
-            }
-
-            // Gera todas as combinações únicas de irmãos.
-            //
-            // Exemplo:
-            // A B C D
-            //
-            // A-B A-C A-D
-            // B-C B-D
-            // C-D
-            //
-            // Evita comparações duplicadas como B-A.
-            for (int i = 0; i < count - 1; i++)
-            {
-                Guid first = family[i];
-
-                for (int j = i + 1; j < count; j++)
+                if (fatherId is null && motherId is null)
                 {
-                    AddRelationship(cache, first: first, second: family[j]);
+                    return;
+                }
+
+                var key = (fatherId, motherId);
+                var bag = families.GetOrAdd(key, _ => []);
+
+                bag.Add(human.Id);
+            });
+
+            // Para cada família, gera combinações únicas de irmãos e registra pares;
+            foreach (var bag in families.Values)
+            {
+                Guid[] members = [.. bag];
+                int count = members.Length;
+
+                if (count < 2)
+                {
+                    continue;
+                }
+
+                for (int i = 0; i < count - 1; i++)
+                {
+                    Guid first = members[i];
+
+                    for (int j = i + 1; j < count; j++)
+                    {
+                        var a = (first, members[j]);
+                        var b = (members[j], first);
+                        pairSet.TryAdd(a, 0);
+                        pairSet.TryAdd(b, 0);
+                    }
                 }
             }
         }
+
+        // Converte o conjunto concorrente para HashSet de retorno
+        return [.. pairSet.Keys];
     }
 
     /// <summary>
-    /// Processa todos os habitantes vivos do mundo,
-    /// executando eventos sociais, familiares,
-    /// econômicos e biológicos.
+    /// Processa todas as ações dos habitantes vivos do mundo,
+    /// executando eventos sociais, familiares, econômicos e biológicos.
     /// </summary>
-    private static async Task ProcessPopulation(World world)
+    private static async Task ProcessHumanLifecycle(World world)
     {
         // Dados globais da simulação;
         DateOnly currentDate = world.CurrentDate;
@@ -269,10 +224,13 @@ public sealed class SimulationFactory
         Dictionary<Guid, Human> humansById = humans.ToDictionary(x => x.Id);
 
         // Cache de relacionamentos;
+        // BuildCloseRelativesCache pode se tornar uma operação pesada em populações grandes.
+        // Por isso, o processamento é paralelizado para reduzir o tempo gasto na construção
+        // dos relacionamentos de parentesco próximos (pais, filhos e irmãos).
         HashSet<(Guid first, Guid second)> closeRelatives = BuildCloseRelativesCache(world);
 
         // Eventos globais anteriores ao processamento individual (ex.: desastres naturais);
-        TryNaturalDisaster(world, currentDate, humans);
+        TryNaturalDisaster(world, currentDate, humans, humansById);
 
         // Fase A: processa em paralelo apenas mudanças individuais de cada humano.
         // Tudo que depende de outros humanos ou altera o estado global da simulação
@@ -338,7 +296,7 @@ public sealed class SimulationFactory
 
                 TryToGetDepression(humansById, human, currentDate);
 
-                TryDistributeInheritance(human, world, currentDate);
+                TryDistributeInheritance(human, world, currentDate, humansById);
 
                 // Incrementa o progresso após processar cada habitante;
                 task.Increment(1);
@@ -403,37 +361,43 @@ public sealed class SimulationFactory
             return;
         }
 
-        // Procura possíveis parceiros compatíveis:
-        // - não pode ser a própria pessoa;
-        // - precisa estar vivo;
-        // - precisa estar solteiro;
-        // - deve ser do sexo oposto;
-        // - diferença máxima de idade de X anos;
-        // - não pode possuir parentesco próximo.
-        List<Human> candidates =
-        [
-            ..potentialPartners.Where(x =>
-                x.Id != human.Id &&
-                x.Life.IsAlive &&
-                x.Relationships.PartnerId is null &&
-                x.Identity.Gender != human.Identity.Gender &&
-                Math.Abs(x.Life.Age - human.Life.Age) <= YEAR_MAX_DIFFERENCE_FOR_REPRODUCTION &&
-                !closeRelatives.Contains((human.Id, x.Id))
-            )
-        ];
+        // Escolhe aleatoriamente um candidato compatível sem criar listas temporárias;
+        Human? selected = null;
+        int validCount = 0;
 
-        // Não encontrou ninguém compatível;
-        if (candidates.Count == 0)
+        foreach (Human x in potentialPartners)
+        {
+            if (x.Id == human.Id || !x.Life.IsAlive || x.Relationships.PartnerId is not null || x.Identity.Gender == human.Identity.Gender)
+            {
+                continue;
+            }
+
+            if (Math.Abs(x.Life.Age - human.Life.Age) > YEAR_MAX_DIFFERENCE_FOR_REPRODUCTION)
+            {
+                continue;
+            }
+
+            if (closeRelatives.Contains((human.Id, x.Id)))
+            {
+                continue;
+            }
+
+            validCount++;
+
+            if (RandomHelpers.RandomBetween(1, validCount) == 1)
+            {
+                selected = x;
+            }
+        }
+
+        if (selected is null)
         {
             return;
         }
 
-        // Escolhe aleatoriamente um dos candidatos válidos;
-        Human partner = candidates[RandomHelpers.RandomBetween(0, candidates.Count - 1)];
-
         // Registra o relacionamento para ambos os lados;
-        human.Relationships.SetPartner(life: human.Life, partnerId: partner.Id);
-        partner.Relationships.SetPartner(life: partner.Life, partnerId: human.Id);
+        human.Relationships.SetPartner(life: human.Life, partnerId: selected.Id);
+        selected.Relationships.SetPartner(life: selected.Life, partnerId: human.Id);
     }
 
     /// <summary>
@@ -451,24 +415,36 @@ public sealed class SimulationFactory
             return;
         }
 
-        List<Human> candidates =
-        [
-            .. potentialPartners.Where(x =>
-                x.Id != human.Id &&
-                x.Life.IsAlive &&
-                x.Identity.Gender != human.Identity.Gender &&
-                !closeRelatives.Contains((human.Id, x.Id))
-            )
-        ];
+        // Escolhe um amante aleatório sem alocar lista temporária (reservoir sampling);
+        Human? selected = null;
+        int validCount = 0;
 
-        if (candidates.Count == 0)
+        foreach (Human x in potentialPartners)
+        {
+            if (x.Id == human.Id || !x.Life.IsAlive || x.Identity.Gender == human.Identity.Gender)
+            {
+                continue;
+            }
+
+            if (closeRelatives.Contains((human.Id, x.Id)))
+            {
+                continue;
+            }
+
+            validCount++;
+
+            if (RandomHelpers.RandomBetween(1, validCount) == 1)
+            {
+                selected = x;
+            }
+        }
+
+        if (selected is null)
         {
             return;
         }
 
-        Human lover = candidates[RandomHelpers.RandomBetween(0, candidates.Count - 1)];
-
-        human.Relationships.AddLover(life: human.Life, loverId: lover.Id);
+        human.Relationships.AddLover(life: human.Life, loverId: selected.Id);
     }
 
     /// <summary>
@@ -791,7 +767,7 @@ public sealed class SimulationFactory
         }
 
         // Distribui herança simples;
-        TryDistributeInheritance(deceased, world, currentDate);
+        TryDistributeInheritance(deceased, world, currentDate, humansById);
     }
 
     /// <summary>
@@ -870,7 +846,7 @@ public sealed class SimulationFactory
     /// <summary>
     /// Evento raro: desastre natural que afeta um país inteiro.
     /// </summary>
-    private static void TryNaturalDisaster(World world, DateOnly currentDate, List<Human> humans)
+    private static void TryNaturalDisaster(World world, DateOnly currentDate, List<Human> humans, Dictionary<Guid, Human> humansById)
     {
         // Baixa probabilidade anual de um desastre;
         if (RandomHelpers.RandomBetween(1, 1000) > 5)
@@ -900,9 +876,6 @@ public sealed class SimulationFactory
 
             if (RandomHelpers.RandomBetween(1, 100) <= chance)
             {
-                // encontrar índice atual do humano no mundo para efeitos posteriores;
-                Dictionary<Guid, Human> humansById = world.Humans.ToDictionary(x => x.Id);
-
                 human.Life.Die(needs: human.Needs, cause: CauseOfDeathEnum.NaturalDisaster, dateOfDeath: currentDate);
 
                 ProcessDeathEffects(human, world, currentDate, humansById);
@@ -1238,27 +1211,58 @@ public sealed class SimulationFactory
             return;
         }
 
-        // Chance pequena de fazer um amigo
+        // Chance pequena de fazer um amigo;
         if (RandomHelpers.RandomBetween(1, 100) <= 8)
         {
-            List<Human> candidates = [.. potentialPartners.Where(x => x.Id != human.Id && x.Life.IsAlive)];
+            // Seleciona um amigo aleatório sem alocar lista temporária;
+            Human? selectedFriend = null;
+            int validCount = 0;
 
-            if (candidates.Count > 0)
+            foreach (Human x in potentialPartners)
             {
-                Human friend = candidates[RandomHelpers.RandomBetween(0, candidates.Count - 1)];
-                human.Social.AddFriend(human.Life, human.Needs, friend.Id);
+                if (x.Id == human.Id || !x.Life.IsAlive)
+                {
+                    continue;
+                }
+
+                validCount++;
+
+                if (RandomHelpers.RandomBetween(1, validCount) == 1)
+                {
+                    selectedFriend = x;
+                }
+            }
+
+            if (selectedFriend is not null)
+            {
+                human.Social.AddFriend(human.Life, human.Needs, selectedFriend.Id);
             }
         }
 
-        // Chance menor de arrumar um inimigo
+        // Chance menor de arrumar um inimigo;
         if (RandomHelpers.RandomBetween(1, 100) <= 3)
         {
-            List<Human> candidates = [.. potentialPartners.Where(x => x.Id != human.Id && x.Life.IsAlive)];
+            // Seleciona um inimigo aleatório sem alocar lista temporária;
+            Human? selectedEnemy = null;
+            int validCountEnemy = 0;
 
-            if (candidates.Count > 0)
+            foreach (Human x in potentialPartners)
             {
-                Human enemy = candidates[RandomHelpers.RandomBetween(0, candidates.Count - 1)];
-                human.Social.AddEnemy(human.Life, human.Needs, enemy.Id);
+                if (x.Id == human.Id || !x.Life.IsAlive)
+                {
+                    continue;
+                }
+
+                validCountEnemy++;
+                if (RandomHelpers.RandomBetween(1, validCountEnemy) == 1)
+                {
+                    selectedEnemy = x;
+                }
+            }
+
+            if (selectedEnemy is not null)
+            {
+                human.Social.AddEnemy(human.Life, human.Needs, selectedEnemy.Id);
             }
         }
     }
@@ -1315,15 +1319,29 @@ public sealed class SimulationFactory
             return;
         }
 
-        // Escolhe uma vítima aleatória que tenha dinheiro
-        List<Human> possibleVictims = [.. humansById.Values.Where(x => x.Id != human.Id && x.Life.IsAlive && x.Finance.Money > 0)];
+        // Escolhe uma vítima aleatória que tenha dinheiro (reservoir sampling);
+        Human? victim = null;
+        int validCount = 0;
 
-        if (possibleVictims.Count == 0)
+        foreach (Human candidate in humansById.Values)
+        {
+            if (candidate.Id == human.Id || !candidate.Life.IsAlive || candidate.Finance.Money <= 0)
+            {
+                continue;
+            }
+
+            validCount++;
+
+            if (RandomHelpers.RandomBetween(1, validCount) == 1)
+            {
+                victim = candidate;
+            }
+        }
+
+        if (victim is null)
         {
             return;
         }
-
-        Human victim = possibleVictims[RandomHelpers.RandomBetween(0, possibleVictims.Count - 1)];
 
         decimal amount = Math.Min(victim.Finance.Money, RandomHelpers.RandomBetween(min: 10, max: 1_000));
 
@@ -1340,7 +1358,7 @@ public sealed class SimulationFactory
     /// <summary>
     /// Distribui herança simples quando um humano morre.
     /// </summary>
-    private static void TryDistributeInheritance(Human human, World world, DateOnly currentDate)
+    private static void TryDistributeInheritance(Human human, World world, DateOnly currentDate, Dictionary<Guid, Human> humansById)
     {
         // Se o humano não morreu, não há herança para distribuir;
         if (!human.Life.IsDead)
@@ -1358,11 +1376,10 @@ public sealed class SimulationFactory
 
         List<Human> heirs = [];
 
-        // Preferir parceiro vivo;
+        // Preferir parceiro vivo; 
         if (human.Relationships.PartnerId is not null)
         {
-            Human? partner = world.Humans.FirstOrDefault(x => x.Id == human.Relationships.PartnerId.Value);
-            if (partner is not null && partner.Life.IsAlive)
+            if (humansById.TryGetValue(human.Relationships.PartnerId.Value, out Human? partner) && partner.Life.IsAlive)
             {
                 heirs.Add(partner);
             }
@@ -1371,8 +1388,7 @@ public sealed class SimulationFactory
         // Filhos vivos;
         foreach (Guid childId in human.Family.ChildrenIds)
         {
-            Human? child = world.Humans.FirstOrDefault(x => x.Id == childId);
-            if (child is not null && child.Life.IsAlive)
+            if (humansById.TryGetValue(childId, out Human? child) && child.Life.IsAlive)
             {
                 heirs.Add(child);
             }
@@ -1383,8 +1399,7 @@ public sealed class SimulationFactory
         {
             foreach (Guid friendId in human.Social.FriendsIds)
             {
-                Human? friend = world.Humans.FirstOrDefault(x => x.Id == friendId);
-                if (friend is not null && friend.Life.IsAlive)
+                if (humansById.TryGetValue(friendId, out Human? friend) && friend.Life.IsAlive)
                 {
                     heirs.Add(friend);
                 }
