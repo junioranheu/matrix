@@ -274,7 +274,42 @@ public sealed class SimulationFactory
         // Eventos globais anteriores ao processamento individual (ex.: desastres naturais);
         TryNaturalDisaster(world, currentDate, humans);
 
-        // Exibe o progresso do processamento da população em tempo real;
+        // Fase A: processa em paralelo apenas mudanças individuais de cada humano.
+        // Tudo que depende de outros humanos ou altera o estado global da simulação
+        // fica para a Fase B, executada de forma sequencial.
+        Parallel.ForEach(humans, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, human =>
+        {
+            List<Human> potentialPartners = GetPotentialPartners(human, men, women);
+
+            ProcessHumanYear(human, currentDate);
+
+            TryFindLover(human, potentialPartners, closeRelatives);
+
+            TryGainHappiness(human);
+
+            TryLoseHappiness(human);
+
+            TryBecomeRich(human);
+
+            TryBecomePoor(human);
+
+            TryMoveCountry(human, currentDate);
+
+            TrySleepEatExercise(human, currentDate);
+
+            TryStudyAndGraduate(human, currentDate);
+
+            TryWorkAndCareer(human, currentDate);
+
+            TrySicknessAndRecovery(human, currentDate);
+
+            TryDonateOrLoan(human, currentDate);
+
+            TryMakeFriendsEnemies(human, potentialPartners);
+        });
+
+        // Fase B: processa de forma sequencial eventos que envolvem múltiplos humanos
+        // ou alteram o estado global da simulação.
         await AnsiConsole.Progress().StartAsync(ctx =>
         {
             ProgressTask task = ctx.AddTask("Processando...", maxValue: humans.Count);
@@ -283,37 +318,11 @@ public sealed class SimulationFactory
             {
                 List<Human> potentialPartners = GetPotentialPartners(human, men, women);
 
-                ProcessHumanYear(human, currentDate);
-
                 TryCreateRelationship(human, potentialPartners, closeRelatives);
-
-                TryFindLover(human, potentialPartners, closeRelatives);
 
                 TryDivorce(humansById, human, currentDate);
 
-                TryMakeFriendsEnemies(human, potentialPartners);
-
                 TryMarryCouple(humansById, human, currentDate);
-
-                TryGainHappiness(human);
-
-                TryLoseHappiness(human);
-
-                TryBecomeRich(human);
-
-                TryBecomePoor(human);
-
-                TryMoveCountry(human, currentDate);
-
-                TrySleepEatExercise(human, currentDate);
-
-                TryStudyAndGraduate(human, currentDate);
-
-                TryWorkAndCareer(human, currentDate);
-
-                TrySicknessAndRecovery(human, currentDate);
-
-                TryDonateOrLoan(human, currentDate);
 
                 TryAttemptTheft(humansById, human);
 
