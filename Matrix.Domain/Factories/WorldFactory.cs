@@ -23,14 +23,25 @@ public sealed class WorldFactory()
     /// <returns>Instância do mundo populada com os primeiros habitantes.</returns>
     public static World Create(InitialSettings settings, DateOnly initialYear)
     {
+        // Obtém todos os países disponíveis;
+        CountryEnum[] countries = Enum.GetValues<CountryEnum>();
+
+        if (settings.AmountOfCountries > countries.Length)
+        {
+            throw new InvalidOperationException($"A configuração solicita {settings.AmountOfCountries} países, mas existem apenas {countries.Length} países disponíveis.");
+        }
+
+        // Embaralha os países para garantir uma seleção aleatória sem repetições;
+        Random.Shared.Shuffle(countries);
+
         // Cria o planeta que será utilizado durante toda a simulação;
         World world = new(name: SimulationHelper.GeneratePlanetName(), initialYear);
 
         // Cria a quantidade configurada de países;
         for (int i = 0; i < settings.AmountOfCountries; i++)
         {
-            // Define aleatoriamente o país que servirá como origem dos habitantes;
-            CountryEnum startingCountry = EnumExtensions.GetRandom<CountryEnum>();
+            // Obtém um país (que foi aleatoriamente embaralhados); 
+            CountryEnum startingCountry = countries[i];
 
             // Cria os casais fundadores do país;
             for (int j = 0; j < settings.StartingCouplesByCountry; j++)

@@ -24,6 +24,8 @@ public sealed class SimulationFactory
     private const int NATURAL_DEATH_AGE_80 = 30;
     private const int NATURAL_DEATH_AGE_90 = 77;
     private const int NATURAL_DEATH_AGE_100 = 97;
+
+    private const int YEAR_SIBLING_RELATIONSHIPS_BANNED = 500;
     #endregion
 
     /// <summary>
@@ -124,7 +126,15 @@ public sealed class SimulationFactory
             AddParentRelationships(cache, human);
         }
 
-        AddSiblingRelationships(world, cache);
+        // Durante os primeiros séculos da civilização,
+        // relacionamentos entre irmãos ainda eram socialmente aceitos.
+        // A partir deste período, a sociedade passa
+        // a reconhecer e evitar esse tipo de relação, sendo
+        // necessário identificar os vínculos de irmandade.
+        if (world.CurrentYear >= YEAR_SIBLING_RELATIONSHIPS_BANNED)
+        {
+            AddSiblingRelationships(world, cache);
+        }
 
         return cache;
     }
