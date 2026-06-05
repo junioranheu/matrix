@@ -3,6 +3,7 @@ using Matrix.Domain.Enums;
 using Matrix.Domain.Helpers;
 using Matrix.Shared.Extensions;
 using Matrix.Shared.Helpers;
+using Spectre.Console;
 
 namespace Matrix.Domain.Factories;
 
@@ -32,7 +33,7 @@ public sealed class SimulationFactory
     /// <summary>
     /// Executa a simulação completa.
     /// </summary>
-    public static void Run(InitialSettings settings, World world, bool isFinalReport, Action<InitialSettings, World, bool> yearReport)
+    public static async Task Run(InitialSettings settings, World world, bool isFinalReport, Action<InitialSettings, World, bool> yearReport)
     {
         for (int year = 0; year < settings.SimulationYears; year++)
         {
@@ -43,7 +44,7 @@ public sealed class SimulationFactory
                 return;
             }
 
-            ProcessPopulation(world);
+           await ProcessPopulation(world);
 
             yearReport.Invoke(settings, world, isFinalReport);
 
@@ -254,7 +255,7 @@ public sealed class SimulationFactory
     /// executando eventos sociais, familiares,
     /// econômicos e biológicos.
     /// </summary>
-    private static void ProcessPopulation(World world)
+    private static async Task ProcessPopulation(World world)
     {
         // Dados globais da simulação;
         DateOnly currentDate = world.CurrentDate;
@@ -270,36 +271,46 @@ public sealed class SimulationFactory
         // Cache de relacionamentos;
         HashSet<(Guid first, Guid second)> closeRelatives = BuildCloseRelativesCache(world);
 
-        foreach (Human human in humans)
+        // Exibe o progresso do processamento da população em tempo real;
+        await AnsiConsole.Progress().StartAsync(ctx =>
         {
-            List<Human> potentialPartners = GetPotentialPartners(human, men, women);
+            ProgressTask task = ctx.AddTask("Processando...", maxValue: humans.Count);
 
-            ProcessHumanYear(human, currentDate);
+            foreach (Human human in humans)
+            {
+                List<Human> potentialPartners = GetPotentialPartners(human, men, women);
 
-            TryCreateRelationship(human, potentialPartners, closeRelatives);
+                ProcessHumanYear(human, currentDate);
 
-            TryFindLover(human, potentialPartners, closeRelatives);
+                TryCreateRelationship(human, potentialPartners, closeRelatives);
 
-            TryDivorce(humansById, human);
+                TryFindLover(human, potentialPartners, closeRelatives);
 
-            TryGainHappiness(human);
+                TryDivorce(humansById, human);
 
-            TryLoseHappiness(human);
+                TryGainHappiness(human);
 
-            TryBecomeRich(human);
+                TryLoseHappiness(human);
 
-            TryBecomePoor(human);
+                TryBecomeRich(human);
 
-            TryMoveCountry(human, currentDate);
+                TryBecomePoor(human);
 
-            TryAccident(human, currentDate);
+                TryMoveCountry(human, currentDate);
 
-            TryProcreate(humansById, world, human, currentDate, closeRelatives);
+                TryAccident(human, currentDate);
 
-            TryNaturalDeath(humansById, human, currentDate);
+                TryProcreate(humansById, world, human, currentDate, closeRelatives);
 
-            TryToGetDepression(humansById, human, currentDate);
-        }
+                TryNaturalDeath(humansById, human, currentDate);
+
+                TryToGetDepression(humansById, human, currentDate);
+
+                task.Increment(1);
+            }
+
+            return Task.CompletedTask;
+        });
     }
 
     /// <summary>

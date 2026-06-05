@@ -17,7 +17,7 @@ await settings.ConfigureAsync(isDebug);
 World world = WorldFactory.Create(settings, initialYear: DateOnly.MinValue);
 
 // Simulação;
-SimulationFactory.Run(
+await SimulationFactory.Run(
     settings,
     world,
     isFinalReport: false,
