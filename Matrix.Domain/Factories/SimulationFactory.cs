@@ -258,17 +258,25 @@ public sealed class SimulationFactory
 
         List<Human> humans = [.. world.Humans.Where(x => x.Life.IsAlive)];
 
+        Dictionary<Guid, Human> humansById = humans.ToDictionary(x => x.Id);
+
         DateOnly currentDate = world.CurrentDate;
+
+        List<Human> aliveMen = [.. humans.Where(x => x.Identity.Gender == GenderEnum.Male)];
+
+        List<Human> aliveWomen = [.. humans.Where(x => x.Identity.Gender == GenderEnum.Female)];
 
         foreach (Human human in humans)
         {
+            List<Human> potentialPartners = GetPotentialPartners(human, aliveMen, aliveWomen);
+
             ProcessHumanYear(human, currentDate);
 
-            TryCreateRelationship(world, human, closeRelatives);
+            TryCreateRelationship(human, potentialPartners, closeRelatives);
 
-            TryFindLover(world, human, closeRelatives);
+            TryFindLover(human, potentialPartners, closeRelatives);
 
-            TryDivorce(world, human);
+            TryDivorce(humansById, human);
 
             TryGainHappiness(human);
 
@@ -282,12 +290,24 @@ public sealed class SimulationFactory
 
             TryAccident(human, currentDate);
 
-            TryProcreate(world, human, currentDate, closeRelatives);
+            TryProcreate(humansById, world, human, currentDate, closeRelatives);
 
-            TryNaturalDeath(world, human, currentDate);
+            TryNaturalDeath(humansById, human, currentDate);
 
-            TryToGetDepression(world, human, currentDate);
+            TryToGetDepression(humansById, human, currentDate);
         }
+    }
+
+    /// <summary>
+    /// Define o conjunto de possíveis parceiros compatíveis
+    /// com o sexo do habitante atual, evitando percorrer
+    /// pessoas que jamais poderiam formar um relacionamento.
+    /// </summary>
+    private static List<Human> GetPotentialPartners(Human human, List<Human> aliveMen, List<Human> aliveWomen)
+    {
+        List<Human> potentialPartners = human.Identity.Gender == GenderEnum.Male ? aliveWomen : aliveMen;
+
+        return potentialPartners;
     }
 
     /// <summary>
@@ -307,7 +327,7 @@ public sealed class SimulationFactory
     /// Tenta criar um relacionamento estável entre dois
     /// habitantes solteiros e compatíveis.
     /// </summary>
-    private static void TryCreateRelationship(World world, Human human, HashSet<(Guid first, Guid second)> closeRelatives)
+    private static void TryCreateRelationship(Human human, List<Human> potentialPartners, HashSet<(Guid first, Guid second)> closeRelatives)
     {
         // Apenas pessoas vivas podem iniciar relacionamentos;
         if (!human.Life.IsAlive)
@@ -322,7 +342,7 @@ public sealed class SimulationFactory
         }
 
         // Impede relacionamentos antes da maioridade;
-        if (human.Life.Age < 18)
+        if (human.Life.Age < MIN_REPRODUCTION_AGE)
         {
             return;
         }
@@ -342,7 +362,7 @@ public sealed class SimulationFactory
         // - não pode possuir parentesco próximo.
         List<Human> candidates =
         [
-            ..world.Humans.Where(x =>
+            ..potentialPartners.Where(x =>
                 x.Id != human.Id &&
                 x.Life.IsAlive &&
                 x.Relationships.PartnerId is null &&
@@ -369,7 +389,7 @@ public sealed class SimulationFactory
     /// <summary>
     /// Tenta criar um relacionamento extraconjugal.
     /// </summary>
-    private static void TryFindLover(World world, Human human, HashSet<(Guid first, Guid second)> closeRelatives)
+    private static void TryFindLover(Human human, List<Human> potentialPartners, HashSet<(Guid first, Guid second)> closeRelatives)
     {
         if (human.Relationships.PartnerId is null)
         {
@@ -383,7 +403,7 @@ public sealed class SimulationFactory
 
         List<Human> candidates =
         [
-            .. world.Humans.Where(x =>
+            .. potentialPartners.Where(x =>
                 x.Id != human.Id &&
                 x.Life.IsAlive &&
                 x.Identity.Gender != human.Identity.Gender &&
@@ -404,7 +424,7 @@ public sealed class SimulationFactory
     /// <summary>
     /// Tenta encerrar um relacionamento existente.
     /// </summary>
-    private static void TryDivorce(World world, Human human)
+    private static void TryDivorce(Dictionary<Guid, Human> humansById, Human human)
     {
         if (human.Relationships.PartnerId is null)
         {
@@ -424,7 +444,12 @@ public sealed class SimulationFactory
             return;
         }
 
-        Human? partner = world.Humans.FirstOrDefault(x => x.Id == human.Relationships.PartnerId);
+        Human? partner = null;
+
+        if (human.Relationships.PartnerId is not null)
+        {
+            humansById.TryGetValue(human.Relationships.PartnerId.Value, out partner);
+        }
 
         human.Relationships.RemovePartner();
         partner?.Relationships.RemovePartner();
@@ -433,12 +458,17 @@ public sealed class SimulationFactory
     /// <summary>
     /// Obtém o parceiro mais provável para reprodução.
     /// </summary>
-    private static Human? GetReproductionPartner(World world, Human human, HashSet<(Guid first, Guid second)> closeRelatives)
+    private static Human? GetReproductionPartner(Dictionary<Guid, Human> humansById, Human human, HashSet<(Guid first, Guid second)> closeRelatives)
     {
         // Primeiro tenta utilizar o parceiro oficial do relacionamento;
         if (human.Relationships.PartnerId is not null)
         {
-            Human? partner = world.Humans.FirstOrDefault(x => x.Id == human.Relationships.PartnerId);
+            Human? partner = null;
+
+            if (human.Relationships.PartnerId is not null)
+            {
+                humansById.TryGetValue(human.Relationships.PartnerId.Value, out partner);
+            }
 
             // O parceiro precisa atender todas as regras
             // de reprodução (idade, sexo, parentesco etc);
@@ -452,19 +482,38 @@ public sealed class SimulationFactory
         // tenta utilizar algum amante válido;
         if (human.Relationships.LoversIds.Count > 0)
         {
-            // Filtra apenas amantes que podem reproduzir;
-            List<Human> validLovers =
-            [
-                ..world.Humans.Where(x =>
-                    human.Relationships.LoversIds.Contains(x.Id) &&
-                    CanReproduceWith(human, x, closeRelatives))
-            ];
+            // Armazena o amante selecionado para reprodução.
+            Human? selectedLover = null;
 
-            // Se existir ao menos um amante válido,
-            // escolhe um aleatoriamente;
-            if (validLovers.Count > 0)
+            // Quantidade de amantes válidos encontrados.
+            int validCount = 0;
+
+            // Percorre apenas os amantes registrados.
+            foreach (Guid loverId in human.Relationships.LoversIds)
             {
-                return validLovers[RandomHelpers.RandomBetween(0, validLovers.Count - 1)];
+                if (!humansById.TryGetValue(loverId, out Human? lover))
+                {
+                    continue;
+                }
+
+                if (!CanReproduceWith(human, lover, closeRelatives))
+                {
+                    continue;
+                }
+
+                validCount++;
+
+                // Seleciona aleatoriamente um amante válido
+                // sem criar listas temporárias.
+                if (RandomHelpers.RandomBetween(1, validCount) == 1)
+                {
+                    selectedLover = lover;
+                }
+            }
+
+            if (selectedLover is not null)
+            {
+                return selectedLover;
             }
         }
 
@@ -474,7 +523,7 @@ public sealed class SimulationFactory
     /// <summary>
     /// Tenta gerar um novo filho utilizando parceiro oficial ou amante.
     /// </summary>
-    private static bool TryProcreate(World world, Human human, DateOnly currentDate, HashSet<(Guid first, Guid second)> closeRelatives)
+    private static bool TryProcreate(Dictionary<Guid, Human> humansById, World world, Human human, DateOnly currentDate, HashSet<(Guid first, Guid second)> closeRelatives)
     {
         // Verifica se o humano atende aos requisitos básicos para reprodução;
         if (!CanReproduce(human))
@@ -489,7 +538,7 @@ public sealed class SimulationFactory
         }
 
         // Obtém um parceiro elegível para reprodução;
-        Human? partner = GetReproductionPartner(world, human, closeRelatives);
+        Human? partner = GetReproductionPartner(humansById, human, closeRelatives);
 
         // Não é possível reproduzir sem um parceiro;
         if (partner is null)
@@ -590,30 +639,6 @@ public sealed class SimulationFactory
         }
 
         return true;
-    }
-
-    /// <summary>
-    /// Verifica se duas pessoas são irmãs ou meio-irmãs.
-    /// </summary>
-    private static bool AreSiblings(Human first, Human second)
-    {
-        Guid? firstFatherId = first.Family.FatherId;
-        Guid? secondFatherId = second.Family.FatherId;
-
-        Guid? firstMotherId = first.Family.MotherId;
-        Guid? secondMotherId = second.Family.MotherId;
-
-        bool sameFather =
-            firstFatherId is not null &&
-            secondFatherId is not null &&
-            firstFatherId == secondFatherId;
-
-        bool sameMother =
-            firstMotherId is not null &&
-            secondMotherId is not null &&
-            firstMotherId == secondMotherId;
-
-        return sameFather || sameMother;
     }
 
     /// <summary>
@@ -802,7 +827,7 @@ public sealed class SimulationFactory
     /// <summary>
     /// Determina se o habitante morre por causas naturais.
     /// </summary>
-    private static bool TryNaturalDeath(World world, Human human, DateOnly currentDate)
+    private static bool TryNaturalDeath(Dictionary<Guid, Human> humansById, Human human, DateOnly currentDate)
     {
         if (!human.Life.IsAlive)
         {
@@ -832,7 +857,12 @@ public sealed class SimulationFactory
 
         human.Life.Die(needs: human.Needs, cause: CauseOfDeathEnum.NaturalCauses, dateOfDeath: currentDate);
 
-        Human? partner = world.Humans.FirstOrDefault(x => x.Relationships.PartnerId == human.Id);
+        Human? partner = null;
+
+        if (human.Relationships.PartnerId is not null)
+        {
+            humansById.TryGetValue(human.Relationships.PartnerId.Value, out partner);
+        }
 
         partner?.Needs.DecreaseHappiness(25);
 
@@ -842,7 +872,7 @@ public sealed class SimulationFactory
     /// <summary>
     /// Determina se o habitante obtém/morre por depressão.
     /// </summary>
-    private static bool TryToGetDepression(World world, Human human, DateOnly currentDate)
+    private static bool TryToGetDepression(Dictionary<Guid, Human> humansById, Human human, DateOnly currentDate)
     {
         if (!human.Life.IsAlive)
         {
@@ -863,7 +893,12 @@ public sealed class SimulationFactory
 
         human.Life.Die(needs: human.Needs, cause: CauseOfDeathEnum.Depression, dateOfDeath: currentDate);
 
-        Human? partner = world.Humans.FirstOrDefault(x => x.Relationships.PartnerId == human.Id);
+        Human? partner = null;
+
+        if (human.Relationships.PartnerId is not null)
+        {
+            humansById.TryGetValue(human.Relationships.PartnerId.Value, out partner);
+        }
 
         partner?.Needs.DecreaseHappiness(25);
 
